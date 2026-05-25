@@ -1,0 +1,6 @@
+{
+  "name": "NORDIC Theme Lab",
+  "description": "Browse, customize, and generate Warm Scandinavian Serif and Brutalist Copenhagen Monospace commerce templates powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+
+/* Custom scrollbar and premium design base classes */
+body {
+  font-family: var(--font-sans);
+  background-color: #f7f6f3;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection aesthetics */
+::selection {
+  background-color: rgba(26,26,26,0.1);
+  color: inherit;
+}
+
+/* Scandi and Minimal Grid styles */
+.scandi-border {
+  border-color: rgba(26, 26, 26, 0.08);
+}
+
