@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { Eye, Heart, Check, Terminal, Shield, ArrowUpRight } from 'lucide-react';
+import { Eye, Heart, Check, Terminal, Shield, ArrowUpRight, Upload } from 'lucide-react';
+import { motion } from 'motion/react';
 import { TemplateProduct } from '../types';
 
 interface Theme46PreviewProps {
@@ -16,6 +17,7 @@ interface Theme46PreviewProps {
   textColor?: string; // hex
   products?: TemplateProduct[];
   onAddToCart?: (product: TemplateProduct) => void;
+  onImageUpload?: (index: number, file: File) => void;
   isLoading?: boolean;
   displayFont?: string;
   bodyFont?: string;
@@ -23,6 +25,11 @@ interface Theme46PreviewProps {
   paddingScale?: 'p-2' | 'p-4' | 'p-6';
   borderRadiusStyle?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   borderWeightStyle?: 'border-0' | 'border' | 'border-2' | 'border-4';
+  countryName?: string;
+  countryCode?: string;
+  languageCode?: string;
+  currencySymbol?: string;
+  showTailwindFavicon?: boolean;
 }
 
 // Fixed beautiful sample products for Theme 46 brutalist copenhagen homeware if AI isn't loaded yet
@@ -68,18 +75,35 @@ export default function Theme46Preview({
   textColor = "#F5F5F5",
   products = defaultProducts,
   onAddToCart,
+  onImageUpload,
   isLoading = false,
   displayFont = "Space Grotesk",
   bodyFont = "JetBrains Mono",
   gradientBg = "",
   paddingScale = "p-4",
   borderRadiusStyle = "none",
-  borderWeightStyle = "border"
+  borderWeightStyle = "border",
+  countryName = "Denmark",
+  countryCode = "DK",
+  languageCode = "da-DK",
+  currencySymbol = "kr.",
+  showTailwindFavicon = true
 }: Theme46PreviewProps) {
   const [selectedProduct, setSelectedProduct] = useState<TemplateProduct | null>(null);
   const [lovedProducts, setLovedProducts] = useState<Record<string, boolean>>({});
   const [addedItemName, setAddedItemName] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'GRID' | 'MANIFESTO'>('GRID');
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const formatLocalizedPrice = (priceStr: string) => {
+    if (!priceStr) return "";
+    const numbers = priceStr.replace(/[^0-9.,]/g, '');
+    if (!numbers) return priceStr;
+    if (currencySymbol === "kr." || currencySymbol === "kr") {
+      return `${numbers} kr`;
+    }
+    return `${currencySymbol}${numbers}`;
+  };
 
   const toggleLove = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -120,9 +144,9 @@ export default function Theme46Preview({
         className="border-b py-2 px-6 flex justify-between items-center text-[10px] tracking-[0.25em]"
         style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}
       >
-        <span>(ONLINE_CATALOG_COMPILER_V3)</span>
-        <span className="animate-pulse text-stone-500">● LIVE_SERVER_CONNECT_OP_ACTIVE</span>
-        <span className="hidden md:inline">(COPENHAGEN, DENMARK // 55.6761° N, 12.5683° E)</span>
+        <span>(SYS_COMPILER_V3 // LOCALE: {countryCode} / {languageCode.toUpperCase()})</span>
+        <span className="animate-pulse font-bold" style={{ color: accentColor }}>● {countryName.toUpperCase()}_DISTRIBUTION_ONLINE_ACTIVE</span>
+        <span className="hidden md:inline">({countryName.toUpperCase()} SHIPPING GATEWAY // {languageCode})</span>
       </div>
 
       {/* Primary Header Group */}
@@ -130,18 +154,28 @@ export default function Theme46Preview({
         className="border-b px-6 py-10 md:px-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6"
         style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}
       >
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] px-1.5 py-0.5 border font-bold" style={{ borderColor: accentColor, color: accentColor }}>SYS.46</span>
-            <span className="opacity-40">/ / EST.2026 / /</span>
+        <div className="flex items-start gap-4">
+          {showTailwindFavicon && (
+            <div className="w-10 h-10 border-2 flex items-center justify-center relative bg-black/5" style={{ borderColor: accentColor }}>
+              <Terminal className="w-5 h-5 text-inherit animate-pulse" style={{ color: accentColor }} />
+              <div className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 border bg-zinc-950 border-current text-[7px] font-bold flex items-center justify-center" style={{ color: accentColor, borderColor: accentColor }}>
+                TW
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 font-mono">
+              <span className="text-[10px] px-1.5 py-0.5 border font-bold" style={{ borderColor: accentColor, color: accentColor }}>SYS.46 // {countryCode}</span>
+              <span className="opacity-40 text-[9px]">/ / EST.2026 / /</span>
+            </div>
+            <h1 
+              className="text-3xl font-extrabold uppercase tracking-tight"
+              style={{ fontFamily: displayFont || 'Space Grotesk, sans-serif' }}
+            >
+              {brandName}
+            </h1>
+            <p className="opacity-60 max-w-lg leading-relaxed">{tagline}</p>
           </div>
-          <h1 
-            className="text-3xl font-extrabold uppercase tracking-tight"
-            style={{ fontFamily: displayFont || 'Space Grotesk, sans-serif' }}
-          >
-            {brandName}
-          </h1>
-          <p className="opacity-60 max-w-lg leading-relaxed">{tagline}</p>
         </div>
 
         {/* Tab triggers */}
@@ -198,10 +232,13 @@ export default function Theme46Preview({
       ) : (
         <div className="w-full">
           {/* Main Hero grid layout splits the screen */}
-          <div className="grid grid-cols-1 md:grid-cols-12 border-b" style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}>
+          <div className="grid grid-cols-1 md:grid-cols-12 border-b overflow-hidden" style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}>
             
             {/* Visual Column */}
-            <div 
+            <motion.div 
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1.1, ease: [0.19, 1, 0.22, 1] }}
               className="md:col-span-7 bg-zinc-900 border-r relative p-2 aspect-video md:aspect-auto" 
               style={{ 
                 borderRightColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)`,
@@ -217,10 +254,15 @@ export default function Theme46Preview({
               <div className="absolute top-6 right-6 px-3 py-1 bg-black text-white text-[10px] font-bold tracking-widest border border-zinc-700 uppercase">
                 (HERO_FRAME_OP_ACTIVE)
               </div>
-            </div>
+            </motion.div>
 
             {/* Spec Details Column */}
-            <div className="md:col-span-5 p-8 md:p-12 flex flex-col justify-between gap-8 bg-zinc-950">
+            <motion.div 
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 1.1, delay: 0.15, ease: [0.19, 1, 0.22, 1] }}
+              className="md:col-span-5 p-8 md:p-12 flex flex-col justify-between gap-8 bg-zinc-950"
+            >
               <div className="space-y-4">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">// ARCHITECTURE_MANIFEST</span>
                 <h2 
@@ -244,23 +286,43 @@ export default function Theme46Preview({
                   <span className="font-bold">THEME_46_BRUTALIST</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Catalog Grid */}
-          <section className="p-6 md:p-12 max-w-7xl mx-auto space-y-8">
+          <section className="p-6 md:p-[5vh] max-w-7xl mx-auto space-y-[4vh]">
             <div className="flex justify-between items-end border-b-2 pb-4 border-zinc-800">
               <span className="font-extrabold uppercase tracking-widest" style={{ fontFamily: displayFont || 'Space Grotesk, sans-serif' }}>[GRID_MODE // ACTIVE]</span>
               <span className="opacity-40">{products.length} OBJECT_NODES RECORDED</span>
             </div>
 
             {/* Structured Table Cells */}
-            <div className="grid grid-cols-1 md:grid-cols-3 border bg-black/5" style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}>
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.1
+                  }
+                }
+              }}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: "-50px" }}
+              className="grid grid-cols-1 md:grid-cols-3 border bg-black/5" 
+              style={{ borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` }}
+            >
               {products.map((product, idx) => (
-                <div 
+                <motion.div 
+                  variants={{
+                    hidden: { opacity: 0, y: 25 },
+                    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 85, damping: 13 } }
+                  }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
                   key={product.id}
                   onClick={() => setSelectedProduct(product)}
-                  className={`group relative cursor-pointer flex flex-col justify-between hover:bg-zinc-900/40 transition-colors ${paddingScale} space-y-6 ${borderWeightStyle}`}
+                  className={`group relative cursor-pointer flex flex-col justify-between hover:bg-zinc-900/40 transition-colors ${paddingScale} space-y-[3vh] ${borderWeightStyle}`}
                   style={{ 
                     borderColor: `rgba(${textColor === '#F5F5F5' ? '255,255,255' : '0,0,0'}, 0.15)` ,
                     borderRadius: borderRadiusStyle === 'none' ? '0px' : borderRadiusStyle === 'sm' ? '4px' : borderRadiusStyle === 'md' ? '8px' : borderRadiusStyle === 'lg' ? '12px' : '24px'
@@ -277,15 +339,40 @@ export default function Theme46Preview({
                     </div>
 
                     <div 
-                      className="aspect-square bg-zinc-900 overflow-hidden border border-zinc-800"
+                      className="relative aspect-square bg-zinc-900 overflow-hidden border border-zinc-800"
                       style={{ borderRadius: borderRadiusStyle === 'none' ? '0px' : borderRadiusStyle === 'sm' ? '3px' : borderRadiusStyle === 'md' ? '6px' : borderRadiusStyle === 'lg' ? '10px' : '20px' }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverIdx(idx);
+                      }}
+                      onDragLeave={() => setDragOverIdx(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverIdx(null);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file && onImageUpload) {
+                          onImageUpload(idx, file);
+                        }
+                      }}
                     >
-                      <img 
+                      <motion.img 
+                        initial={{ scale: 1.04, filter: 'grayscale(100%) opacity(0.6)' }}
+                        whileInView={{ scale: 1, filter: 'grayscale(0%) opacity(1)' }}
+                        viewport={{ once: true, margin: "-20px" }}
+                        transition={{ duration: 1.1, ease: "easeOut" }}
                         src={product.image}
                         alt={product.name}
                         referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-102 transition-all duration-500"
+                        className="w-full h-full object-cover transition-transform duration-500"
                       />
+
+                      {dragOverIdx === idx && (
+                        <div className="absolute inset-0 bg-black/95 text-[#FF5500] flex flex-col items-center justify-center p-4 text-center z-30 animate-fade-in font-mono">
+                          <Upload className="w-8 h-8 mb-2 stroke-1 animate-bounce" style={{ color: accentColor }} />
+                          <span className="text-[10px] tracking-widest font-extrabold uppercase">[DROP_OBJECT_IMAGE_NODE]</span>
+                          <span className="text-[8px] opacity-60 mt-1 max-w-[150px]">Instant replacement pipeline</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1">
@@ -300,7 +387,7 @@ export default function Theme46Preview({
                   </div>
 
                   <div className="flex justify-between items-end border-t border-zinc-800/60 pt-4">
-                    <span className="font-extrabold text-[14px]" style={{ color: accentColor }}>{product.price}</span>
+                    <span className="font-extrabold text-[14px]" style={{ color: accentColor }}>{formatLocalizedPrice(product.price)}</span>
                     <button 
                       onClick={(e) => triggerCart(product, e)}
                       className="px-3 py-1.5 border border-zinc-700 bg-zinc-950 font-bold hover:bg-white hover:text-black transition-colors"
@@ -308,9 +395,9 @@ export default function Theme46Preview({
                       (BUY_OBJECT_NODE)
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </section>
         </div>
       )}

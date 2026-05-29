@@ -8,6 +8,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import fs from "fs";
 
 dotenv.config();
 
@@ -117,6 +118,117 @@ async function startServer() {
       console.error("AI Generation error:", err);
       res.status(500).json({ error: err.message || "Failed to generate spec from Gemini." });
     }
+  });
+
+  // Real write workspace file API to avoid simulation limits
+  app.post("/api/write-workspace-file", (req, res) => {
+    try {
+      const { fileName, content } = req.body;
+      if (!fileName || !content) {
+        return res.status(400).json({ error: "fileName and content are required." });
+      }
+
+      // Sanitize fileName to prevent path traversal
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9_\.-]/g, "");
+      if (sanitizedName !== fileName) {
+        return res.status(400).json({ error: "Invalid file name. Path traversal detected or special characters used." });
+      }
+
+      // Check file extension
+      if (!sanitizedName.endsWith(".tsx") && !sanitizedName.endsWith(".html") && !sanitizedName.endsWith(".ts")) {
+        return res.status(400).json({ error: "Only .tsx, .ts, or .html files can be saved to workspace." });
+      }
+
+      const filePath = path.join(process.cwd(), "src", "components", sanitizedName);
+      
+      // Ensure directory exists or create
+      const dirPath = path.dirname(filePath);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
+      fs.writeFileSync(filePath, content, "utf8");
+      console.log(`[FILE WRITE SUCCESS] File generated: ${filePath}`);
+      res.json({ 
+        success: true, 
+        filePath: `/src/components/${sanitizedName}`, 
+        message: "File successfully created and generated in workspace!" 
+      });
+    } catch (err: any) {
+      console.error("File generation error:", err);
+      res.status(500).json({ error: err.message || "Failed to write file to local project workspace." });
+    }
+  });
+
+  // Database API Proxy Store for Continuous Backend Sync
+  interface SyncedBlueprint {
+    id: string;
+    brandName: string;
+    tagline: string;
+    philosophy: string;
+    bgColor: string;
+    textColor: string;
+    accentColor: string;
+    displayFont: string;
+    bodyFont: string;
+    products: any[];
+    style: string;
+    syncedAt: string;
+  }
+
+  const syncedBlueprintsDb: SyncedBlueprint[] = [];
+
+  // Sync a customized spec to database proxy
+  app.post("/api/sync-blueprint", (req, res) => {
+    try {
+      const spec = req.body;
+      if (!spec.id || !spec.brandName) {
+        return res.status(400).json({ error: "Missing required spec parameters (id, brandName)." });
+      }
+
+      const existingIndex = syncedBlueprintsDb.findIndex(b => b.id === spec.id);
+      const blueprintRecord: SyncedBlueprint = {
+        id: spec.id,
+        brandName: spec.brandName,
+        tagline: spec.tagline || "",
+        philosophy: spec.philosophy || "",
+        bgColor: spec.bgColor || "",
+        textColor: spec.textColor || "",
+        accentColor: spec.accentColor || "",
+        displayFont: spec.displayFont || "Inter",
+        bodyFont: spec.bodyFont || "Inter",
+        products: spec.products || [],
+        style: spec.style || "warm_scandinavian",
+        syncedAt: new Date().toISOString(),
+      };
+
+      if (existingIndex > -1) {
+        syncedBlueprintsDb[existingIndex] = blueprintRecord;
+      } else {
+        syncedBlueprintsDb.push(blueprintRecord);
+      }
+
+      console.log(`Backend Database Sync Success // Synced: ${spec.brandName} (${spec.id})`);
+      res.json({ success: true, count: syncedBlueprintsDb.length, blueprint: blueprintRecord });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || "Database synchronization failed." });
+    }
+  });
+
+  // Pull all synchronized specs
+  app.get("/api/sync-blueprints", (req, res) => {
+    res.json({ blueprints: syncedBlueprintsDb });
+  });
+
+  // Clear a synced blueprint
+  app.delete("/api/sync-blueprint/:id", (req, res) => {
+    const { id } = req.params;
+    const initialLength = syncedBlueprintsDb.length;
+    const index = syncedBlueprintsDb.findIndex(b => b.id === id);
+    if (index > -1) {
+      syncedBlueprintsDb.splice(index, 1);
+    }
+    res.json({ success: true, count: syncedBlueprintsDb.length, deleted: initialLength !== syncedBlueprintsDb.length });
   });
 
   // Client static assets & SPA Fallbacks

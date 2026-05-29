@@ -34,7 +34,8 @@ import {
   Send,
   Check,
   CheckSquare,
-  Info
+  Info,
+  Mail
 } from 'lucide-react';
 import { DesignTemplate, FiftyNordicTemplates } from '../data/templates';
 
@@ -46,6 +47,18 @@ export interface UserAccount {
   plan: 'free' | 'pro' | 'max';
   registeredAt: string;
   mrr: number; // calculated simulated monthly payment
+}
+
+export interface SimulatedEmail {
+  id: string;
+  timestamp: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  type: 'registration' | 'upgrade' | 'downgrade';
+  previousPlan?: string;
+  newPlan?: string;
+  bodyHtml: string;
 }
 
 interface RoleWorkspaceProps {
@@ -120,6 +133,10 @@ export default function RoleWorkspace({ onBack, onLaunchTemplate, themeStyle }: 
   ]);
   const [newClientName, setNewClientName] = useState('');
   const [selectedSpecName, setSelectedSpecName] = useState(FiftyNordicTemplates[0]?.name || 'STUDIO NORDÖ');
+  const [specCustomTagline, setSpecCustomTagline] = useState('Bespoke Handcrafted Design Matrix');
+  const [specCustomNotes, setSpecCustomNotes] = useState('Primary web presence with custom platform integration. Emphasize organic textures and extreme linen spacing.');
+  const [specPrimarySwatch, setSpecPrimarySwatch] = useState('#FAF8F5');
+  const [specAccentSwatch, setSpecAccentSwatch] = useState('#c5a880');
 
   // Admin user directory search & filter
   const [searchVal, setSearchVal] = useState('');
@@ -145,6 +162,63 @@ export default function RoleWorkspace({ onBack, onLaunchTemplate, themeStyle }: 
     'INFO: Awaiting event emissions from Stripe...'
   ]);
   const [isBroadcastingWebhook, setIsBroadcastingWebhook] = useState(false);
+
+  // Simulated Email Notification states
+  const [selectedEmailId, setSelectedEmailId] = useState<string>('msg-902');
+  const [sentEmails, setSentEmails] = useState<SimulatedEmail[]>([
+    {
+      id: 'msg-901',
+      timestamp: '2026-05-27 10:14:22',
+      recipientEmail: 'astrid@copenhagen.dk',
+      recipientName: 'Astrid Lind',
+      subject: 'Welcome to Nordic Premium — License Activated [Atelier Pro]',
+      type: 'registration',
+      newPlan: 'pro',
+      bodyHtml: `
+        <div style="font-family: sans-serif; padding: 24px; background-color: #FAF8F5; color: #111; border: 1px solid #e5e5e5; max-width: 500px; margin: 0 auto;">
+          <h2 style="font-weight: 300; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px;">NORDIC PREMIUM</h2>
+          <p style="font-size: 13px; color: #555;">ID NODE: <strong>usr-102</strong></p>
+          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 16px 0;" />
+          <p style="font-size: 14px;">Hej <strong>Astrid Lind</strong>,</p>
+          <p style="font-size: 13px; line-height: 1.6; color: #222;">Your premium <strong>Atelier Pro</strong> tenant license is now live. Explore Nordic templates, compile production-ready designs, and sync components instantly to your private storage cloud.</p>
+          <div style="margin: 20px 0; padding: 15px; background: #FFF; border-left: 3px solid #6366f1; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+            <span style="font-size: 11px; text-transform: uppercase; color: #9c8469; font-weight: bold; display: block;">License Level</span>
+            <span style="font-size: 16px; font-weight: bold; color: #4338ca;">ATELIER PRO</span>
+          </div>
+          <p style="font-size: 11px; color: #888;">Nordic Premium ApS • Copenhagen, Denmark</p>
+        </div>
+      `
+    },
+    {
+      id: 'msg-902',
+      timestamp: '2026-05-27 12:45:01',
+      recipientEmail: 'lars@cph-design.dk',
+      recipientName: 'Kopenhagen Atelier Ltd.',
+      subject: 'Security Alert: Subscription Upgraded to [Studio Max]',
+      type: 'upgrade',
+      previousPlan: 'pro',
+      newPlan: 'max',
+      bodyHtml: `
+        <div style="font-family: sans-serif; padding: 24px; background-color: #FAF8F5; color: #111; border: 1px solid #e5e5e5; max-width: 500px; margin: 0 auto;">
+          <h2 style="font-weight: 300; letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 8px;">NORDIC PREMIUM</h2>
+          <p style="font-size: 13px; color: #555;">ID NODE: <strong>usr-103</strong></p>
+          <hr style="border: none; border-top: 1px solid #eaeaea; margin: 16px 0;" />
+          <p style="font-size: 14px;">Hej <strong>Kopenhagen Atelier Ltd.</strong>,</p>
+          <p style="font-size: 13px; line-height: 1.6; color: #222;">Excellent news. Your subscription has successfully been updated. You have acquired the coveted <strong>Studio Max Super License</strong>.</p>
+          <div style="margin: 20px 0; padding: 15px; background: #FFF; border-left: 3px solid #c5a880; border-top: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+            <span style="font-size: 11px; text-transform: uppercase; color: #9c8469; font-weight: bold; display: block;">Upgrade Event Details</span>
+            <span style="font-size: 14px; font-weight: bold; color: #9c8469;">Atelier Pro &rarr; STUDIO MAX</span>
+          </div>
+          <p style="font-size: 11px; color: #888;">Nordic Premium ApS • Copenhagen, Denmark</p>
+        </div>
+      `
+    }
+  ]);
+  const [adminTerminalLogs, setAdminTerminalLogs] = useState<string[]>([
+    `[15:00:01] 🟢 [SYSTEM] Central Control SMTP Agent Online.`,
+    `[15:01:22] ℹ️ [STANDBY] Ready to intercept subscription and registration emissions.`,
+    `[15:01:45] 🔐 [SECURE] SSH loopback listening on port 25 (Simulated SMTP).`
+  ]);
 
   const handleSyncSanity = () => {
     setIsSyncingSanity(true);
@@ -224,75 +298,71 @@ export default function RoleWorkspace({ onBack, onLaunchTemplate, themeStyle }: 
     
     setTimeout(() => {
       setDownloadProgress(50);
-      setDownloadStepMsg("Bundling client routes, theme states & Tailwind matrices...");
+      setDownloadStepMsg(`Compiling custom configuration specifications for: ${selectedSpecName}...`);
       
       setTimeout(() => {
         setDownloadProgress(85);
-        setDownloadStepMsg("Translating configs, generating package.json script structures & rules...");
+        setDownloadStepMsg("Bundling design parameters, custom color swatches & scripts...");
         
         setTimeout(() => {
           setDownloadProgress(100);
-          setDownloadStepMsg("Archive package prepared! Triggering browser file output.");
+          setDownloadStepMsg("Spec Sheet package prepared! Dispatched files.");
           
           // Generate file download containing gorgeous guidance and custom configurations
           const textContent = `========================================================================
-NORDIC PREMIUM DESIGN SYSTEMS - DEPLOYMENT KIT
-ACTING TENANT IDENTITY: ${currentUser.name} (${currentUser.email})
-SECURITY CLEARANCE LEVEL: ${currentUser.role.toUpperCase()}
-DASHBOARD SYSTEM ACCOUNT LICENSE PLAN: ${currentUser.plan.toUpperCase()}
+NORDIC PREMIUM DESIGN SYSTEMS - DYNAMIC TECHNICAL SPECIFICATION
+========================================================================
+ACTING DESIGNER: ${currentUser.name} (${currentUser.email})
+CLEARANCE ACCESS LEVEL: ${currentUser.role.toUpperCase()}
+DASHBOARD LICENSE LEVEL: ${currentUser.plan.toUpperCase()}
 ========================================================================
 
 Dear ${currentUser.name},
 
-You have requested a secure clean source export bundle of the "Nordic Themes Shop" 
-Vite & React engine to prepare for production stage deployment on Railway, Vercel, or Netlify.
+Below satisfies the requested technical specifications compiled on-the-fly 
+for your Scandinavian design layout from our shop portfolio dashboard.
 
 ------------------------------------------------------------------------
-DEPLOYMENT DESTINATION 1: PROD CONTAINER HOSTING WITH RAILWAY
+1. BRAND BRIEF & SPECIFICATIONS
 ------------------------------------------------------------------------
-Railway provides super-premium custom container orchestration that instantly 
-boots our dual custom script modes for seamless service ingress.
+SELECTED TEMPLATE:   ${selectedSpecName}
+CUSTOM BRAND FOCUS:  ${specCustomTagline}
+PRIMARY COVER PAINT: ${specPrimarySwatch}
+ACCENT COLOR SWATCH: ${specAccentSwatch}
 
-PROMOTIONAL REFERRAL REGISTRATION LINK (Use this for dynamic credits!):
-👉 TARGET LINK: https://railway.com?referralCode=kNWgF4
+CREATIVE NOTES:
+"${specCustomNotes}"
 
-Step-By-Step Setup Rules:
-1. Log in or create a free host profile at: https://railway.com?referralCode=kNWgF4
+------------------------------------------------------------------------
+2. INTEGRATED EXPORTS & INGRESS
+------------------------------------------------------------------------
+DEPLOYMENT PATH:     ${deployFramework === 'nextjs' ? '▲ Next.js App Router (Vercel)' : '⚛ Vite / HTML Edge (Netlify)'}
+
+${deployFramework === 'nextjs' ? `
+Next.js deployment executes on Vercel utilizing micro edge caching:
+- Command line: 'npx vercel --prod'
+- Webhook endpoints bind live to: '/api/webhooks/stripe'
+- Live template feeds hydration from active spec [${selectedSpecName}]
+` : `
+Vite deployment builds a static production SPA ready for Netlify drop:
+- Build command: 'npm run build'
+- Direct static site publish folder: 'dist/'
+- Config edge redirection maps: redirect '*' inside 'dist/index.html'
+`}
+
+------------------------------------------------------------------------
+3. RAILWAY CONTAINER DEPLOYMENT MAPPING (RECOMMENDED)
+------------------------------------------------------------------------
+We recommend deploying direct proxy node containers on Railway with zero configuration.
+
+REGISTERED REFERRAL LINK FOR OPERATIONAL CREDITS:
+👉 TARGET: https://railway.com?referralCode=kNWgF4
+
+Setup guidelines:
+1. Log in or create a host profile at: https://railway.com?referralCode=kNWgF4
 2. Install the lightweight Railway CLI locally: 'npm i -g @railway/cli'
-3. Authenticate with your Railway browser credentials: 'railway login'
-4. Run 'railway init' in your local extracted code directory.
-5. Launch deployment! Railway automatically pulls the standard server entry 
-   point, builds the production build and proxies Port 3000: 'railway up'
-6. Your live Scandinavian theme directory is immediately live and accessible globally!
-
-------------------------------------------------------------------------
-DEPLOYMENT DESTINATION 2: HOSTING ON VERCEL (SPEED-OPTIMISED REACT EDGE)
-------------------------------------------------------------------------
-Vercel is exceptionally optimized for building dynamic client-side React SPA catalogues.
-
-Step-by-Step Setup Rules:
-1. Install Vercel's global CLI runner: 'npm install -g vercel'
-2. Run 'vercel login' in your local shell.
-3. Configure your local workspace settings with:
-   - Framework preset: Vite / React
-   - Build Command: 'npm run build'
-   - Output/Public Directory: 'dist'
-4. Run 'vercel' to trigger interactive deployment, or connect your codebase 
-   via GitHub integration in Vercel's web console to enjoy instant Git-Push auto builds.
-
-------------------------------------------------------------------------
-DEPLOYMENT DESTINATION 3: HOSTING ON NETLIFY (ZIP DRAG-DROP OR GITHUB)
-------------------------------------------------------------------------
-Netlify provides lightning-fast CDN deployment edge regions for high-density systems.
-
-Step-by-Step Setup Rules:
-1. Build the production output bundle locally in your workspace: 'npm run build'
-2. Locate the static output directory: 'dist/'
-3. Drag and drop the physical 'dist/' folder straight into Netlify Drop (https://app.netlify.com/drop) 
-   to deploy to a live production CDN node instantly without a single CLI command!
-4. Alternatively, hook up your git repository with build settings:
-   - Build Command: 'npm run build'
-   - Publish Directory: 'dist'
+3. Authenticate with your credentials: 'railway login'
+4. Run 'railway init' followed by 'railway up' inside your codebase.
 
 ------------------------------------------------------------------------
 HOW TO DOWNLOAD YOUR ENTIRE REPOSITORY FILES IN THE STUDIO
@@ -302,8 +372,6 @@ To package the entire project repository code directly from your AI Studio envir
 2. Under the 'Export' options, trigger 'Export code as ZIP'.
 3. This downloads the complete high-fidelity codebase (with package.json, source folders, 
    webpack templates, assets, and design data presets).
-4. Extract the physical file on your workstation, execute 'npm install' inside the folder, 
-   and run 'npm run dev' to boot local rendering.
 
 ========================================================================
 Thank you for executing with Nordic premium templates of architectural craft.
@@ -314,10 +382,125 @@ Thank you for executing with Nordic premium templates of architectural craft.
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.setAttribute('download', 'NORDIC_THEME_SHOP_DEPLOYMENT_PACKAGE.txt');
+          link.setAttribute('download', `NORDIC_SPEC_${selectedSpecName.replace(/\s+/g, '_')}.txt`);
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          // Trigger sequential download of the compiled high-fidelity React Component!
+          const codeContent = `// ==========================================
+// Compiled Design System / React Storefront
+// Custom System Specs Applied Sequentially
+// Selected Blueprint Name: ${selectedSpecName}
+// ==========================================
+
+import React, { useState } from 'react';
+import { ShoppingBag, Star, Heart, Check, HelpCircle } from 'lucide-react';
+
+export default function CustomPremiumStorefront() {
+  const [cartCount, setCartCount] = useState(0);
+  
+  const brandName = "${selectedSpecName.toUpperCase()}";
+  const tagline = "${specCustomTagline}";
+  const notes = "${specCustomNotes.replace(/"/g, '\\"')}";
+  const primaryColor = "${specPrimarySwatch}";
+  const accentColor = "${specAccentSwatch}";
+
+  const products = [
+    {
+      id: "prod-1",
+      name: "Minimalist Scandinavian Oak Chair",
+      category: "Furniture",
+      price: "$480.00",
+      description: "A beautifully crafted Solid European Oak statement piece modeled on traditional Danish joinery principles.",
+      image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?w=600&auto=format&fit=crop&q=60"
+    },
+    {
+      id: "prod-2",
+      name: "Handmade Ceramic Vase - Matte Ash Green",
+      category: "Ceramics",
+      price: "$120.00",
+      description: "Thrown on the wheel in Denmark, each piece highlights rustic impurities and a rich textured glaze.",
+      image: "https://images.unsplash.com/photo-1578500494198-246f612d3b3d?w=600&auto=format&fit=crop&q=60"
+    },
+    {
+      id: "prod-3",
+      name: "Brutalist Matte Metal Office Poster",
+      category: "Prints",
+      price: "$65.00",
+      description: "Silk-screen printed on heavyweight 300g cotton archival paper. Strict structural alignment.",
+      image: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&auto=format&fit=crop&q=60"
+    }
+  ];
+
+  return (
+    <div 
+      className="w-full min-h-screen p-8 transition-all duration-300 flex flex-col justify-between" 
+      style={{ backgroundColor: primaryColor || '#FAF8F5', color: '#111317', fontFamily: 'sans-serif' }}
+    >
+      <header className="border-b border-black/10 pb-6 mb-12 flex justify-between items-center bg-transparent">
+        <div>
+          <h1 className="text-2xl font-bold uppercase tracking-widest">{brandName}</h1>
+          <p className="text-[10px] tracking-widest opacity-60 uppercase mt-1">{tagline}</p>
+        </div>
+        <button onClick={() => setCartCount(c => c + 1)} className="flex items-center gap-2 px-3 py-1.5 border border-black/20 text-xs font-mono font-semibold" style={{ backgroundColor: accentColor || '#c5a880' }}>
+          <ShoppingBag className="w-4 h-4" />
+          <span>BAG ({cartCount})</span>
+        </button>
+      </header>
+
+      <main className="max-w-5xl mx-auto space-y-12 flex-grow w-full">
+        {notes && (
+          <div className="border border-black/15 p-6 italic font-light text-sm opacity-90 max-w-2xl bg-white/10">
+            "Creative Notes: {notes}"
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {products.map((p) => (
+            <div 
+              key={p.id} 
+              className="border border-black/10 p-5 flex flex-col justify-between h-[420px] bg-white/5 shadow-sm rounded-lg"
+            >
+              <div className="aspect-square bg-neutral-900/10 overflow-hidden rounded-md relative">
+                <img src={p.image} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
+              </div>
+              <div className="pt-4">
+                <span className="text-[9px] uppercase tracking-widest opacity-50 block">{p.category}</span>
+                <h3 className="font-bold uppercase tracking-wider text-xs mt-1">{p.name}</h3>
+                <p className="text-[11px] opacity-70 mt-2 line-clamp-2">{p.description}</p>
+              </div>
+              <div className="flex justify-between items-center border-t border-black/10 pt-3 mt-3">
+                <span className="font-bold">{p.price}</span>
+                <button 
+                  onClick={() => setCartCount(prev => prev + 1)}
+                  className="px-3 py-1 text-[10px] uppercase font-bold text-white tracking-[0.12em] bg-neutral-900 hover:opacity-85 transition-colors"
+                >
+                  ADD OBJECT
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+      </main>
+
+      <footer className="border-t border-black/10 pt-8 mt-16 text-center text-[10px] opacity-50">
+        <p>© 2026 NORDIC Theme Lab Studio. Hand-tailored Spec sheet compiled code.</p>
+      </footer>
+    </div>
+  );
+}
+`;
+          const codeBlob = new Blob([codeContent], { type: 'text/typescript;charset=utf-8' });
+          const codeUrl = URL.createObjectURL(codeBlob);
+          const codeLink = document.createElement('a');
+          codeLink.href = codeUrl;
+          codeLink.setAttribute('download', `${selectedSpecName.replace(/\s+/g, '_')}_custom_showroom.tsx`);
+          document.body.appendChild(codeLink);
+          codeLink.click();
+          document.body.removeChild(codeLink);
+          URL.revokeObjectURL(codeUrl);
           
           setIsCompilingForDownload(false);
         }, 800);
@@ -1365,52 +1548,148 @@ Thank you for executing with Nordic premium templates of architectural craft.
               {/* Left Column: Compilation & Zipping Actions */}
               <div className="lg:col-span-6 space-y-6">
                 
-                {/* Simulated Download Section */}
-                <div className={`p-6 border rounded-none relative overflow-hidden ${
+                 {/* Simulated Download Section with Option #1 Blueprint Customizer */}
+                <div className={`p-6 border rounded-none relative overflow-hidden space-y-5 ${
                   isWarmTheme ? 'bg-white border-stone-200' : 'bg-zinc-950 border-zinc-800'
                 }`}>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">WORKSPACE COMPILER</span>
+                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider font-sans">WORKSPACE COMPILER</span>
                     <span className="text-[9px] font-mono opacity-50">NODE_VERSION: 20+</span>
                   </div>
 
-                  <h3 className="text-lg font-bold tracking-tight uppercase mb-2">Build & Download Codebase</h3>
-                  <p className="text-xs opacity-70 leading-relaxed mb-6">
-                    Analyze, compile, and prepare your dynamic React Scandinavian design catalogue into a standalone production export bundle.
-                  </p>
+                  <div>
+                    <h3 className="text-md font-bold tracking-tight uppercase mb-1">Interactive Custom Spec Sheet Builder</h3>
+                    <p className="text-xs opacity-70 leading-relaxed">
+                      Configure details for the selected Danish layout specification to dynamically hydrate the exported technical client manifest.
+                    </p>
+                  </div>
 
-                  {isCompilingForDownload ? (
-                    <div className="p-5 bg-stone-100/40 border border-dashed rounded-none space-y-4">
-                      <div className="flex items-center justify-between text-[11px] font-bold">
-                        <span className="animate-pulse text-[#9c8469]">{downloadStepMsg}</span>
-                        <span className="font-mono">{downloadProgress}%</span>
-                      </div>
-                      <div className="w-full bg-stone-200 h-2 overflow-hidden">
-                        <div 
-                          className="bg-[#c5a880] h-full transition-all duration-300"
-                          style={{ width: `${downloadProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-[10px] opacity-50">Please do not navigate away. Packing configuration elements...</p>
+                  {/* Active Form Fields */}
+                  <div className="space-y-4 pt-1 text-xs">
+                    {/* Select active blueprint template */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] uppercase tracking-wider font-bold opacity-60">TARGET BLUEPRINT TEMPLATE</label>
+                      <select 
+                        value={selectedSpecName} 
+                        onChange={(e) => setSelectedSpecName(e.target.value)}
+                        className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                          isWarmTheme ? 'bg-white border-stone-250' : 'bg-[#121212] text-white border-zinc-800'
+                        }`}
+                      >
+                        {FiftyNordicTemplates.map(t => (
+                          <option key={t.id} value={t.name}>{t.id} - {t.name} ({t.category})</option>
+                        ))}
+                      </select>
                     </div>
-                  ) : (
-                    <button
-                      onClick={triggerSimulatedDownload}
-                      className="w-full py-4 text-center text-xs uppercase font-bold tracking-widest border border-stone-800 bg-stone-900 text-white hover:bg-[#c5a880] hover:text-stone-950 hover:border-[#c5a880] transition cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Download className="w-4 h-4" /> Trigger Source Build & Download Guide (.TXT)
-                    </button>
-                  )}
+
+                    {/* Brand Focus Tagline */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] uppercase tracking-wider font-bold opacity-60">BRAND CLIENT FOCUS / TAGLINE</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Bespoke Handmade Ceramics atelier"
+                        value={specCustomTagline}
+                        onChange={(e) => setSpecCustomTagline(e.target.value)}
+                        className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                          isWarmTheme ? 'bg-white border-stone-250' : 'bg-[#121212] text-white border-zinc-800'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Custom Swatch Paint Choice */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] uppercase tracking-wider font-bold opacity-60">BACKGROUND COVER HEX</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color"
+                            value={specPrimarySwatch}
+                            onChange={(e) => setSpecPrimarySwatch(e.target.value)}
+                            className="w-8 h-8 rounded-none border-stone-300 cursor-pointer shrink-0"
+                          />
+                          <input 
+                            type="text"
+                            value={specPrimarySwatch}
+                            onChange={(e) => setSpecPrimarySwatch(e.target.value)}
+                            placeholder="#FFFFFF"
+                            className={`w-full p-1.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                              isWarmTheme ? 'bg-white border-stone-250' : 'bg-[#121212] text-white border-zinc-800'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] uppercase tracking-wider font-bold opacity-60">ACCENT PAINT HEX</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="color"
+                            value={specAccentSwatch}
+                            onChange={(e) => setSpecAccentSwatch(e.target.value)}
+                            className="w-8 h-8 rounded-none border-stone-300 cursor-pointer shrink-0"
+                          />
+                          <input 
+                            type="text"
+                            value={specAccentSwatch}
+                            onChange={(e) => setSpecAccentSwatch(e.target.value)}
+                            placeholder="#000000"
+                            className={`w-full p-1.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                              isWarmTheme ? 'bg-white border-stone-250' : 'bg-[#121212] text-white border-zinc-800'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Creative brief Notes */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] uppercase tracking-wider font-bold opacity-60">CREATIVE BRIEF / SERVICE NOTES</label>
+                      <textarea 
+                        rows={3}
+                        placeholder="Describe special layout rules..."
+                        value={specCustomNotes}
+                        onChange={(e) => setSpecCustomNotes(e.target.value)}
+                        className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                          isWarmTheme ? 'bg-white border-stone-250' : 'bg-[#121212] text-white border-zinc-800'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-dashed border-stone-200/55 pt-4">
+                    {isCompilingForDownload ? (
+                      <div className="p-5 bg-stone-100/40 border border-dashed rounded-none space-y-4">
+                        <div className="flex items-center justify-between text-[11px] font-bold">
+                          <span className="animate-pulse text-[#9c8469]">{downloadStepMsg}</span>
+                          <span className="font-mono">{downloadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-stone-200 h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-[#c5a880] h-full transition-all duration-300"
+                            style={{ width: `${downloadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] opacity-50">Please do not navigate away. Encoding parameters...</p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={triggerSimulatedDownload}
+                        className="w-full py-4 text-center text-xs uppercase font-bold tracking-widest border border-stone-800 bg-stone-900 text-white hover:bg-[#c5a880] hover:text-stone-950 hover:border-[#c5a880] transition cursor-pointer flex items-center justify-center gap-2"
+                      >
+                        <Download className="w-4 h-4" /> Trigger Spec Sheet Build & Download (.TXT)
+                      </button>
+                    )}
+                  </div>
 
                   <div className="mt-4 p-4 border border-stone-250 bg-amber-50/10 text-xs rounded-none space-y-2">
                     <h5 className="font-bold uppercase text-amber-600 flex items-center gap-1.5">
                       💡 Pro Workspace Note
                     </h5>
                     <p className="leading-relaxed text-[11px]">
-                      Because browser sandboxing blocks direct file-system zip triggers inside this frame preview, your download activates an authentic **Deployment Spec Sheet** customized dynamically for **{currentUser.name}**. 
+                      Because browser sandboxing blocks direct file-system zip triggers inside this preview frame, your config generates an authentic dynamic <strong>Technical Spec Sheet</strong> customized for <strong>{currentUser.name}</strong>.
                     </p>
                     <p className="leading-relaxed text-[11px] opacity-75">
-                      To download the absolute, exact workspace source files, use the **Settings Gear (top right)** inside AI Build and choose **"Export to ZIP"** or **"Export to Github"**!
+                      To download the exact physical source project structure, use the top-right settings drawer and select <strong>"Export as ZIP"</strong> or <strong>"Export to Github"</strong>!
                     </p>
                   </div>
                 </div>

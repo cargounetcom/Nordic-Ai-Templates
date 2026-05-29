@@ -4,7 +4,8 @@
  */
 
 import React, { useState } from 'react';
-import { ShoppingBag, Eye, Heart, X, Check, ArrowRight } from 'lucide-react';
+import { ShoppingBag, Eye, Heart, X, Check, ArrowRight, Upload } from 'lucide-react';
+import { motion } from 'motion/react';
 import { TemplateProduct } from '../types';
 
 interface Theme42PreviewProps {
@@ -16,6 +17,7 @@ interface Theme42PreviewProps {
   textColor?: string; // hex
   products?: TemplateProduct[];
   onAddToCart?: (product: TemplateProduct) => void;
+  onImageUpload?: (index: number, file: File) => void;
   isLoading?: boolean;
   displayFont?: string;
   bodyFont?: string;
@@ -23,6 +25,11 @@ interface Theme42PreviewProps {
   paddingScale?: 'p-2' | 'p-4' | 'p-6';
   borderRadiusStyle?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   borderWeightStyle?: 'border-0' | 'border' | 'border-2' | 'border-4';
+  countryName?: string;
+  countryCode?: string;
+  languageCode?: string;
+  currencySymbol?: string;
+  showTailwindFavicon?: boolean;
 }
 
 // Fixed beautiful sample products for Theme 42 homeware demo if AI results aren't loaded yet
@@ -65,17 +72,34 @@ export default function Theme42Preview({
   textColor = "#2C2A27",
   products = defaultProducts,
   onAddToCart,
+  onImageUpload,
   isLoading = false,
   displayFont = "Playfair Display",
   bodyFont = "Inter",
   gradientBg = "",
   paddingScale = "p-4",
   borderRadiusStyle = "none",
-  borderWeightStyle = "border"
+  borderWeightStyle = "border",
+  countryName = "Denmark",
+  countryCode = "DK",
+  languageCode = "da-DK",
+  currencySymbol = "kr.",
+  showTailwindFavicon = true
 }: Theme42PreviewProps) {
   const [selectedProduct, setSelectedProduct] = useState<TemplateProduct | null>(null);
   const [lovedProducts, setLovedProducts] = useState<Record<string, boolean>>({});
   const [addedItemName, setAddedItemName] = useState<string | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const formatLocalizedPrice = (priceStr: string) => {
+    if (!priceStr) return "";
+    const numbers = priceStr.replace(/[^0-9.,]/g, '');
+    if (!numbers) return priceStr;
+    if (currencySymbol === "kr." || currencySymbol === "kr") {
+      return `${numbers} kr`;
+    }
+    return `${currencySymbol}${numbers}`;
+  };
 
   const toggleLove = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,28 +134,53 @@ export default function Theme42Preview({
 
       {/* Navigation */}
       <header className="border-b border-stone-200/40 px-6 py-8 md:px-12 flex justify-between items-center bg-transparent backdrop-blur-sm">
-        <div className="flex flex-col">
-          <span 
-            className="text-xl md:text-2xl font-light tracking-[0.2em] uppercase"
-            style={{ fontFamily: displayFont || 'Playfair Display, serif' }}
-          >
-            {brandName}
-          </span>
-          <span className="text-[10px] font-sans tracking-[0.3em] uppercase opacity-60 mt-1">{tagline}</span>
+        <div className="flex items-center gap-3">
+          {showTailwindFavicon && (
+            <div className="w-8 h-8 rounded-sm flex items-center justify-center border border-current opacity-90 relative" style={{ borderColor: accentColor }}>
+              <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 2L2 12l10 10 10-10L12 2z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12 6l6 6-6 6-6-6 6-6z" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" />
+              </svg>
+              <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: accentColor }}></span>
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accentColor }}></span>
+              </span>
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span 
+              className="text-xl md:text-2xl font-light tracking-[0.2em] uppercase"
+              style={{ fontFamily: displayFont || 'Playfair Display, serif' }}
+            >
+              {brandName}
+            </span>
+            <span className="text-[10px] font-sans tracking-[0.3em] uppercase opacity-60 mt-1">{tagline}</span>
+          </div>
         </div>
         <nav className="hidden md:flex space-x-8 text-xs font-sans tracking-widest uppercase opacity-70">
           <a href="#about" className="hover:opacity-100 transition-opacity">Archive</a>
           <a href="#catalog" className="hover:opacity-100 transition-opacity">Objects</a>
           <a href="#philosophy" className="hover:opacity-100 transition-opacity">Manifesto</a>
         </nav>
-        <div className="flex items-center space-x-4">
-          <span className="text-[10px] font-sans tracking-[0.2em] font-medium px-2 py-1 border border-stone-300 text-stone-500 rounded-sm">THEME 42</span>
+        <div className="flex items-center space-x-3">
+          <div className="hidden sm:flex flex-col text-right font-mono text-[9px] opacity-60">
+            <span>LOCALE: {countryCode} / {languageCode.toUpperCase()}</span>
+            <span>FULFILLMENT: {countryName} HUB</span>
+          </div>
+          <span className="text-[10px] font-sans tracking-[0.2em] font-medium px-2 py-1 border border-stone-300 text-stone-500 rounded-sm">
+            {countryCode}-{languageCode.split('-')[0].toUpperCase()}
+          </span>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="px-6 py-12 md:px-12 md:py-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center max-w-7xl mx-auto">
-        <div className="md:col-span-5 space-y-6">
+      <section className="px-6 py-12 md:px-12 md:py-20 grid grid-cols-1 md:grid-cols-12 gap-8 items-center max-w-7xl mx-auto overflow-hidden">
+        <motion.div 
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="md:col-span-5 space-y-6"
+        >
           <span className="text-xs font-sans tracking-[0.25em] uppercase text-stone-500 block">NEW COLLECTION / EST. 2026</span>
           <h1 
             className="text-4xl md:text-6xl font-light leading-tight tracking-tight text-balance"
@@ -154,9 +203,12 @@ export default function Theme42Preview({
               Explore Living Forms <ArrowRight className="w-4 h-4" />
             </a>
           </div>
-        </div>
+        </motion.div>
 
-        <div 
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 1.4, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="md:col-span-7 relative h-[350px] md:h-[500px] w-full overflow-hidden bg-stone-100 shadow-sm border border-stone-200/20 group"
           style={{ borderRadius: borderRadiusStyle === 'none' ? '0px' : borderRadiusStyle === 'sm' ? '4px' : borderRadiusStyle === 'md' ? '8px' : borderRadiusStyle === 'lg' ? '12px' : '24px' }}
         >
@@ -176,11 +228,11 @@ export default function Theme42Preview({
               {products[0]?.name || "Oak Lounge Chair"}
             </h3>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Materials / Details banner */}
-      <section id="philosophy" className="border-y border-stone-200/40 py-12 bg-white/30 backdrop-blur-sm text-center">
+      <section id="philosophy" className="border-y border-stone-200/40 py-[6vh] lg:py-[8vh] bg-white/30 backdrop-blur-sm text-center">
         <div className="max-w-2xl mx-auto px-6 space-y-3">
           <span className="text-[10px] font-sans tracking-[0.3em] uppercase opacity-50">MATERIAL INTEGRITY</span>
           <p 
@@ -193,8 +245,8 @@ export default function Theme42Preview({
       </section>
 
       {/* Catalog Grid */}
-      <section id="catalog" className="px-6 py-16 md:px-12 md:py-24 max-w-7xl mx-auto">
-        <div className="flex justify-between items-end mb-12 border-b border-stone-200/30 pb-4">
+      <section id="catalog" className="px-6 py-[8vh] lg:py-[12vh] max-w-7xl mx-auto">
+        <div className="flex justify-between items-end mb-[4vh] lg:mb-[6vh] border-b border-stone-200/30 pb-4">
           <div>
             <span className="text-xs font-sans tracking-[0.2em] uppercase opacity-50">CURATED EDIT</span>
             <h2 
@@ -207,11 +259,30 @@ export default function Theme42Preview({
           <span className="text-xs font-sans tracking-widest opacity-60 italic">{products.length} Items Available</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-12">
-          {products.map((product) => (
-            <div 
+        <motion.div 
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.12
+              }
+            }
+          }}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: "-50px" }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-[5vh]"
+        >
+          {products.map((product, pIdx) => (
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 75, damping: 14 } }
+              }}
+              whileHover={{ y: -6, transition: { duration: 0.25, ease: "easeOut" } }}
               key={product.id}
-              className={`group cursor-pointer flex flex-col justify-between transition-all hover:translate-y-[-2px] duration-300 ${paddingScale} ${borderWeightStyle} border-stone-300/30 bg-white/5`}
+              className={`group cursor-pointer flex flex-col justify-between transition-all duration-300 ${paddingScale} ${borderWeightStyle} border-stone-300/30 bg-white/5`}
               style={{ 
                 borderRadius: borderRadiusStyle === 'none' ? '0px' : borderRadiusStyle === 'sm' ? '4px' : borderRadiusStyle === 'md' ? '8px' : borderRadiusStyle === 'lg' ? '12px' : '24px'
               }}
@@ -222,13 +293,38 @@ export default function Theme42Preview({
                 <div 
                   className="relative aspect-[3/4] bg-stone-100 overflow-hidden shadow-xs border border-stone-200/10"
                   style={{ borderRadius: borderRadiusStyle === 'none' ? '0px' : borderRadiusStyle === 'sm' ? '3px' : borderRadiusStyle === 'md' ? '6px' : borderRadiusStyle === 'lg' ? '10px' : '20px' }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverIdx(pIdx);
+                  }}
+                  onDragLeave={() => setDragOverIdx(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverIdx(null);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && onImageUpload) {
+                      onImageUpload(pIdx, file);
+                    }
+                  }}
                 >
-                  <img 
+                  <motion.img 
+                    initial={{ scale: 1.05, filter: 'grayscale(100%) opacity(0.7)' }}
+                    whileInView={{ scale: 1, filter: 'grayscale(0%) opacity(1)' }}
+                    viewport={{ once: true, margin: "-30px" }}
+                    transition={{ duration: 1.1, ease: "easeOut" }}
                     src={product.image}
                     alt={product.name}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
+                  
+                  {dragOverIdx === pIdx && (
+                    <div className="absolute inset-0 bg-stone-900/90 text-stone-100 flex flex-col items-center justify-center p-4 text-center z-30 animate-fade-in backdrop-blur-xs">
+                      <Upload className="w-8 h-8 mb-2 stroke-1 animate-bounce" style={{ color: accentColor }} />
+                      <span className="text-xs uppercase tracking-widest font-mono font-bold">RELEASE TO REPLACE</span>
+                      <span className="text-[10px] opacity-60 mt-1 max-w-[150px]">Drop product image or custom mockup file</span>
+                    </div>
+                  )}
                   
                   {product.badge && (
                     <span className="absolute top-4 left-4 bg-white/95 text-stone-800 text-[9px] font-sans font-medium uppercase tracking-widest py-1 px-2 shadow-xs">
@@ -274,12 +370,12 @@ export default function Theme42Preview({
                       {product.name}
                     </h3>
                   </div>
-                  <span className="text-sm tracking-wide font-sans mt-0.5">{product.price}</span>
+                  <span className="text-sm tracking-wide font-sans mt-0.5">{formatLocalizedPrice(product.price)}</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer */}
