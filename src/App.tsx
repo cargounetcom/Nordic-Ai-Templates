@@ -10,9 +10,15 @@ import Theme46Preview from './components/Theme46Preview';
 import AIGenerator from './components/AIGenerator';
 import TemplateSimulator from './components/TemplateSimulator';
 import RoleWorkspace from './components/RoleWorkspace';
+import LegalPortal from './components/LegalPortal';
+import ThemeLandingPage from './components/ThemeLandingPage';
+import SysMonitors from './components/SysMonitors';
+import EarlyAccessWaitlist from './components/EarlyAccessWaitlist';
+import FeedbackWidget from './components/FeedbackWidget';
+import ErrorPages from './components/ErrorPages';
 import { FiftyNordicTemplates, DesignTemplate } from './data/templates';
 
-type ActiveView = 'market' | 'simulator' | 'theme42_live' | 'theme46_live' | 'ai_spec_compiler' | 'role_workspace';
+type ActiveView = 'market' | 'simulator' | 'theme42_live' | 'theme46_live' | 'ai_spec_compiler' | 'role_workspace' | 'theme_landing_42' | 'theme_landing_46' | 'systems_monitor' | 'err_404' | 'err_500';
 
 export default function App() {
   const [view, setView] = useState<ActiveView>('market');
@@ -31,6 +37,10 @@ export default function App() {
   // AI seed variables forwarded from design templates
   const [aiPresetPrompt, setAiPresetPrompt] = useState('');
   const [aiPresetStyle, setAiPresetStyle] = useState<'warm_scandinavian' | 'brutalist_copenhagen'>('warm_scandinavian');
+
+  // Legal compliance portals states
+  const [isLegalOpen, setIsLegalOpen] = useState(false);
+  const [legalTab, setLegalTab] = useState<'privacy' | 'gdpr' | 'terms'>('privacy');
 
   // Set up local Stockholm/Copenhagen digital time updates
   useEffect(() => {
@@ -165,6 +175,81 @@ export default function App() {
     );
   }
 
+  if (view === 'theme_landing_42') {
+    return (
+      <ThemeLandingPage 
+        themeId={42}
+        onBack={() => setView('market')}
+        onLaunchLive={() => setView('theme42_live')}
+        onTriggerAIPreset={handleTriggerAIPreset}
+      />
+    );
+  }
+
+  if (view === 'theme_landing_46') {
+    return (
+      <ThemeLandingPage 
+        themeId={46}
+        onBack={() => setView('market')}
+        onLaunchLive={() => setView('theme46_live')}
+        onTriggerAIPreset={handleTriggerAIPreset}
+      />
+    );
+  }
+
+  if (view === 'systems_monitor') {
+    return (
+      <div className={`min-h-screen p-6 md:p-12 transition-colors duration-500 ${
+        marketTheme === 'warm' 
+          ? 'bg-[#FAF8F5] text-[#2C2A27] font-serif' 
+          : 'bg-[#121212] text-[#F5F5F5] font-mono'
+      }`}>
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex justify-between items-center border-b pb-6"
+               style={{ borderColor: marketTheme === 'warm' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}>
+            <div>
+              <h2 className="text-2xl font-light uppercase tracking-widest">
+                Systems Diagnostics & Telemetry
+              </h2>
+              <p className="text-xs opacity-65 font-sans mt-1">
+                Monitor uptime probes, system performance speed indexes, and privacy-respecting client analytics events.
+              </p>
+            </div>
+            <button
+              onClick={() => setView('market')}
+              className={`text-xs uppercase font-bold tracking-wider py-2 px-4 border transition cursor-pointer ${
+                marketTheme === 'warm' ? 'border-stone-800 text-stone-800 hover:bg-stone-50' : 'border-zinc-800 text-zinc-300 hover:bg-zinc-900'
+              }`}
+            >
+              Back to general catalogue
+            </button>
+          </div>
+          <SysMonitors themeStyle={marketTheme} />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'err_404') {
+    return (
+      <ErrorPages 
+        errorType="404"
+        themeStyle={marketTheme}
+        onReset={() => setView('market')}
+      />
+    );
+  }
+
+  if (view === 'err_500') {
+    return (
+      <ErrorPages 
+        errorType="500"
+        themeStyle={marketTheme}
+        onReset={() => setView('market')}
+      />
+    );
+  }
+
   return (
     <div 
       className={`min-h-screen transition-colors duration-500 ${
@@ -189,17 +274,56 @@ export default function App() {
 
       {/* Global Lab Mini Header Ticker */}
       <div 
-        className="px-6 py-2.5 border-b flex justify-between items-center text-[10px] tracking-widest select-none uppercase"
+        className="px-6 py-2.5 border-b flex flex-col md:flex-row gap-2 justify-between items-center text-[10px] tracking-widest select-none uppercase font-mono"
         style={{ borderColor: marketTheme === 'warm' ? 'rgba(26,26,26,0.08)' : 'rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-stone-400" />
           <span>COPENHAGEN/STOCKHOLM DOCK TIME: <span className="font-bold">{cphTime || '11:20:00'}</span></span>
         </div>
-        <div className="flex items-center space-x-4">
-          <span className="hidden md:inline text-stone-500">DIGITAL_LICENSE_OP: AUTHENTICATED</span>
-          <span>•</span>
-          <span className="text-stone-400">DESIGN_DB SIZE: 50 NODES</span>
+        
+        {/* Real-time Diagnostics Selector Toolbar */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <button 
+            onClick={() => setView('systems_monitor')}
+            id="bar-systems-monitor"
+            className="text-[#9c8469] hover:text-stone-900 transition-colors cursor-pointer font-bold flex items-center gap-1"
+          >
+            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping inline-block animate-pulse" />
+            <span>📡 SYSTEMS & REAL-TIME ANALYTICS</span>
+          </button>
+          <span className="opacity-30 text-stone-400">|</span>
+          <button 
+            onClick={() => setView('theme_landing_42')}
+            id="bar-theme-42-landing"
+            className="text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+          >
+            🎁 THEME 42 LANDING
+          </button>
+          <span className="opacity-30 text-stone-400">|</span>
+          <button 
+            onClick={() => setView('theme_landing_46')}
+            id="bar-theme-46-landing"
+            className="text-stone-500 hover:text-stone-900 transition-colors cursor-pointer"
+          >
+            🖥️ THEME 46 LANDING
+          </button>
+          <span className="opacity-30 text-stone-400">|</span>
+          <button 
+            onClick={() => setView('err_404')}
+            id="bar-trigger-404"
+            className="text-rose-500 hover:text-rose-600 transition-colors cursor-pointer font-semibold"
+          >
+            ⚠️ TEST 404
+          </button>
+          <span className="opacity-30 text-stone-400">|</span>
+          <button 
+            onClick={() => setView('err_500')}
+            id="bar-trigger-500"
+            className="text-rose-500 hover:text-rose-600 transition-colors cursor-pointer font-semibold"
+          >
+            ❌ TEST 500
+          </button>
         </div>
       </div>
 
@@ -464,23 +588,38 @@ export default function App() {
                   </div>
 
                   {/* Operational triggers */}
-                  <div className={`border-t p-4 flex gap-2 select-none ${isWarm ? 'border-stone-100 bg-stone-50/50' : 'border-zinc-900 bg-zinc-900/25'}`}>
-                    <button 
-                      onClick={() => handleLaunchSimulator(template)}
-                      className={`flex-1 py-2 text-[10px] uppercase font-sans tracking-wider font-semibold border transition text-center hover:bg-stone-100 cursor-pointer ${
-                        isWarm ? 'bg-white text-stone-800 border-stone-300' : 'bg-zinc-900 text-white border-zinc-700 hover:bg-zinc-800'
-                      }`}
-                    >
-                      Sandbox Customizer
-                    </button>
-                    <button 
-                      onClick={() => setMockCartCount(prev => prev + 1)}
-                      className={`py-2 px-3 text-[10px] uppercase font-sans tracking-wide font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
-                        isWarm ? 'bg-[#2C2A27] text-white hover:bg-stone-800' : 'bg-amber-400 text-stone-950 hover:bg-amber-300'
-                      }`}
-                    >
-                      Add Spec
-                    </button>
+                  <div className={`border-t p-4 flex flex-col gap-2 select-none ${isWarm ? 'border-stone-100 bg-stone-50/50' : 'border-zinc-900 bg-zinc-900/25'}`}>
+                    <div className="flex gap-2 w-full">
+                      {(template.id === 'tpl-42' || template.id === 'tpl-46') && (
+                        <button 
+                          onClick={() => setView(template.id === 'tpl-42' ? 'theme_landing_42' : 'theme_landing_46')}
+                          id={`showcase-trigger-button-${template.id}`}
+                          className={`flex-1 py-1.5 px-2 text-[9px] uppercase font-sans tracking-wider font-extrabold border transition text-center cursor-pointer flex items-center justify-center gap-1 text-[#9c8469] ${
+                            isWarm ? 'bg-[#FAF8F5] border-[#c0a27d] hover:bg-[#FAF8F5]/80' : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'
+                          }`}
+                        >
+                          Showcase Page
+                        </button>
+                      )}
+                      
+                      <button 
+                        onClick={() => handleLaunchSimulator(template)}
+                        className={`flex-1 py-1.5 text-[9px] uppercase font-sans tracking-wider font-semibold border transition text-center hover:bg-stone-150 cursor-pointer ${
+                          isWarm ? 'bg-white text-stone-800 border-stone-300' : 'bg-zinc-950 text-white border-zinc-800 hover:bg-zinc-900'
+                        }`}
+                      >
+                        Sandbox Customizer
+                      </button>
+
+                      <button 
+                        onClick={() => setMockCartCount(prev => prev + 1)}
+                        className={`py-1.5 px-3.5 text-[9px] uppercase font-sans tracking-wide font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0 ${
+                          isWarm ? 'bg-[#2C2A27] text-white hover:bg-stone-850' : 'bg-amber-400 text-stone-950 hover:bg-amber-350'
+                        }`}
+                      >
+                        Add Spec
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -489,25 +628,36 @@ export default function App() {
         )}
       </section>
 
-      {/* Feature section detail: AI Integration statement */}
+      {/* Feature section detail: AI Integration & Waitlist split layout */}
       <section 
-        className="px-6 py-12 md:px-12 md:py-16 max-w-7xl mx-auto border-t text-center space-y-6"
+        className="px-6 py-12 md:px-12 md:py-16 max-w-7xl mx-auto border-t space-y-6"
         style={{ borderColor: marketTheme === 'warm' ? 'rgba(26,26,26,0.08)' : 'rgba(255,255,255,0.08)' }}
       >
-        <div className="max-w-2xl mx-auto space-y-4">
-          <span className="text-[11px] font-sans tracking-[0.25em] uppercase opacity-50 block select-none">// SYSTEM COMPILER</span>
-          <h3 className="text-2xl font-light uppercase tracking-wide">Dynamic Code Synthesis</h3>
-          <p className="text-xs text-stone-500 leading-relaxed font-sans font-light">
-            Need an organic blend or high-contrast jewelry template that is not in the default catalogue? Boot up the Google Gemini AI Spec workspace to draft customized layouts from simple text prompts.
-          </p>
-          <div className="pt-2">
-            <button 
-              onClick={() => setView('ai_spec_compiler')}
-              className="px-6 py-3.5 bg-neutral-900 text-white hover:bg-neutral-800 transition-colors uppercase text-xs tracking-widest font-semibold flex items-center gap-2 mx-auto cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              Launch Creative AI Sandbox
-            </button>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          {/* Left Column: AI info */}
+          <div className="lg:col-span-6 bg-stone-100/40 border border-stone-200/50 p-8 flex flex-col justify-between"
+               style={{ borderColor: marketTheme === 'warm' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
+            <div className="space-y-4 text-left">
+              <span className="text-[11px] font-sans tracking-[0.25em] uppercase opacity-55 block select-none font-mono">// GOOGLE GEMINI POWERED MULTI-MODEL PORTAL</span>
+              <h3 className="text-2xl font-light uppercase tracking-wide">Dynamic Code Synthesis</h3>
+              <p className="text-xs text-stone-500 leading-relaxed font-sans font-light">
+                Need an organic blend or high-contrast jewelry template that is not in the default catalogue? Boot up the Google Gemini AI Spec workspace to draft customized layouts from simple text prompts.
+              </p>
+            </div>
+            <div className="pt-6 text-left">
+              <button 
+                onClick={() => setView('ai_spec_compiler')}
+                className="px-6 py-3.5 bg-neutral-900 text-white hover:bg-[#2C2A27] transition-colors uppercase text-xs tracking-widest font-semibold flex items-center justify-center gap-2 cursor-pointer w-full"
+              >
+                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                <span>Launch Creative AI Sandbox</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Waitlist early access form */}
+          <div className="lg:col-span-6 flex flex-col justify-between">
+            <EarlyAccessWaitlist themeStyle={marketTheme} />
           </div>
         </div>
       </section>
@@ -518,8 +668,47 @@ export default function App() {
         style={{ borderColor: marketTheme === 'warm' ? 'rgba(26,26,26,0.08)' : 'rgba(255,255,255,0.08)' }}
       >
         <p className="font-serif italic font-light lowercase text-base tracking-normal">design, code and art in synergy.</p>
+        
+        {/* GDPR, Privacy Policy and Legal Documents Navigation directory */}
+        <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-[10px] font-sans font-bold tracking-wider">
+          <button 
+            type="button" 
+            onClick={() => { setLegalTab('privacy'); setIsLegalOpen(true); }}
+            className="text-stone-500 hover:text-stone-800 transition-colors uppercase cursor-pointer"
+          >
+            Privacy Policy
+          </button>
+          <span className="text-stone-300">•</span>
+          <button 
+            type="button" 
+            onClick={() => { setLegalTab('gdpr'); setIsLegalOpen(true); }}
+            className="text-[#9c8469] hover:text-stone-800 transition-colors uppercase cursor-pointer"
+          >
+            GDPR Compliance Hub
+          </button>
+          <span className="text-stone-300">•</span>
+          <button 
+            type="button" 
+            onClick={() => { setLegalTab('terms'); setIsLegalOpen(true); }}
+            className="text-stone-500 hover:text-stone-800 transition-colors uppercase cursor-pointer"
+          >
+            Terms of Service
+          </button>
+        </div>
+
         <p className="text-[10px]">© 2026 NORDIC Theme Lab Studio. Powered by AI Studio & Gemini Multi-Model Suite.</p>
       </footer>
+
+      {/* Render Legal Compliance Modal */}
+      <LegalPortal 
+        isOpen={isLegalOpen}
+        onClose={() => setIsLegalOpen(false)}
+        themeStyle={marketTheme}
+        initialTab={legalTab}
+      />
+
+      {/* Render Interactive Float critique user feedback widget */}
+      <FeedbackWidget themeStyle={marketTheme} />
 
     </div>
   );

@@ -35,7 +35,12 @@ import {
   Check,
   CheckSquare,
   Info,
-  Mail
+  Mail,
+  GitBranch,
+  Terminal,
+  Cloud,
+  Key,
+  Github
 } from 'lucide-react';
 import { DesignTemplate, FiftyNordicTemplates } from '../data/templates';
 
@@ -162,6 +167,35 @@ export default function RoleWorkspace({ onBack, onLaunchTemplate, themeStyle }: 
     'INFO: Awaiting event emissions from Stripe...'
   ]);
   const [isBroadcastingWebhook, setIsBroadcastingWebhook] = useState(false);
+
+  // Google Auth & Registration States
+  const [googleUserEmail, setGoogleUserEmail] = useState('ellanovachenko@gmail.com');
+  const [googleUserName, setGoogleUserName] = useState('Elena Rosengren');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleClientRegistered, setGoogleClientRegistered] = useState(false);
+
+  // Git Repository Integration States
+  const [gitRepoUrl, setGitRepoUrl] = useState('github.com/ellanovachenko/nordic-premium-studio');
+  const [gitBranch, setGitBranch] = useState('main');
+  const [gitAuthToken, setGitAuthToken] = useState('ghp_************************************');
+  const [isGitLinking, setIsGitLinking] = useState(false);
+  const [gitLinkStatus, setGitLinkStatus] = useState<'idle' | 'linked' | 'failed'>('idle');
+  const [gitTerminalLogs, setGitTerminalLogs] = useState<string[]>([
+    '[SYSTEM] Local git environment workspace initialized',
+    'INFO: Run git connectors to sync remote branches...',
+    'INFO: Detected AI Studio project ID: 57017176'
+  ]);
+
+  // Cloudflare Zero Trust States
+  const [cloudflareDomain, setCloudflareDomain] = useState('cph-nordic-premium.cloudflareaccess.com');
+  const [cloudflareClientId, setCloudflareClientId] = useState('cf-aud-3c299faee78129bc01a221b06efc');
+  const [cloudflareTunnelToken, setCloudflareTunnelToken] = useState('eyJhIjoiY2YtYXBwIiwidCI6ImNwaC10dW5uZWwtc2VjcmV0LWtleSIsInMiOiI5M1hZIn0=');
+  const [isCloudflareEnforced, setIsCloudflareEnforced] = useState(false);
+  const [cloudflareVerifyStatus, setCloudflareVerifyStatus] = useState<'idle' | 'verifying' | 'enforced'>('idle');
+  const [cloudflareTerminalLog, setCloudflareTerminalLog] = useState<string[]>([
+    'SYSTEM: Initialized Cloudflare Access Tunnel check',
+    'INFO: Enforce Cloudflare JWT Access token validation to secure /api/*'
+  ]);
 
   // Simulated Email Notification states
   const [selectedEmailId, setSelectedEmailId] = useState<string>('msg-902');
@@ -532,6 +566,115 @@ export default function CustomPremiumStorefront() {
       else if (target.role === 'studio') setActiveTab('studio');
       else setActiveTab('profiler');
     }
+  };
+
+  // Google SSO Autologin and Registrate Account
+  const handleGoogleRegisterAuth = () => {
+    setIsGoogleLoading(true);
+    setAdminTerminalLogs(prev => [
+      `[${new Date().toLocaleTimeString()}] INCOMING: Initialized Google OAuth account link for ${googleUserEmail}`,
+      ...prev
+    ]);
+
+    setTimeout(() => {
+      const planCost = 499; // Studio Max by default inside Premium Google flow
+      const gId = `usr-g${Date.now().toString().slice(-3)}`;
+      const newNode = {
+        id: gId,
+        name: googleUserName,
+        email: googleUserEmail,
+        role: 'admin' as const,
+        plan: 'max' as const,
+        registeredAt: new Date().toISOString().split('T')[0],
+        mrr: planCost
+      };
+
+      setUsersList(prev => {
+        // remove duplicate email if already exists
+        const filtered = prev.filter(u => u.email.toLowerCase() !== googleUserEmail.toLowerCase());
+        return [newNode, ...filtered];
+      });
+      setCurrentUser(newNode);
+      setGoogleClientRegistered(true);
+      setIsGoogleLoading(false);
+
+      setAdminTerminalLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] 🟢 Google Account [${googleUserEmail}] successfully authenticated and elevated to Studio Max Admin`,
+        ...prev
+      ]);
+      alert(`Google Identity link established! Welcome ${googleUserName} (${googleUserEmail}). Session has been elevated to Central Studio Max Administrator.`);
+      setActiveTab('admin');
+    }, 1200);
+  };
+
+  // Git Repository Connecter Suite
+  const runGitCommand = (cmd: 'init' | 'commit' | 'push' | 'pull') => {
+    setIsGitLinking(true);
+    setGitTerminalLogs(prev => [...prev, `[USER_RUN]$ git ${cmd === 'init' ? 'init' : cmd === 'commit' ? 'add . && git commit -m "chore: push Scandinavian Design Token definitions"' : cmd === 'push' ? `push origin ${gitBranch}` : `pull origin ${gitBranch}`}`]);
+    
+    setTimeout(() => {
+      setIsGitLinking(false);
+      if (cmd === 'init') {
+        setGitTerminalLogs(prev => [
+          ...prev,
+          `Initialized empty Git repository in /workspace/.git/`,
+          `git: tracking 48 design components, 2 main portals.`,
+          `Default branch set to [${gitBranch}].`,
+          `Set your remote URL and SSH token key to authenticate push actions.`
+        ]);
+      } else if (cmd === 'commit') {
+        setGitTerminalLogs(prev => [
+          ...prev,
+          `warning: LF will be replaced by CRLF in src/App.tsx.`,
+          `[${gitBranch} f9a21b0] chore: push Scandinavian Design Token definitions`,
+          ` 3 files changed, 250 insertions(+)`,
+          ` create mode 100644 src/components/GoogleCloudflareIntegrator.tsx`
+        ]);
+      } else if (cmd === 'push') {
+        if (!gitRepoUrl) {
+          setGitTerminalLogs(prev => [...prev, `❌ FATAL: Remote repository destination is empty.`]);
+          return;
+        }
+        setGitLinkStatus('linked');
+        setGitTerminalLogs(prev => [
+          ...prev,
+          `Linking context to remote origin: https://${gitRepoUrl}...`,
+          `Resolving deltas: 100% (18/18)`,
+          `Matching SSH/PAT Key credentials for ${googleUserEmail}... Authenticated!`,
+          `Writing objects: 100% (18/18), 3.29 KiB | 3.29 MiB/s, done.`,
+          `To https://${gitRepoUrl}`,
+          ` * [new branch]      ${gitBranch} -> ${gitBranch}`,
+          `🟢 SUCCESS: Repository fully in sync. Active branch: origin/${gitBranch}. Cloudflare build-on-push webhooks triggered.`
+        ]);
+      } else if (cmd === 'pull') {
+        setGitTerminalLogs(prev => [
+          ...prev,
+          `Connecting remote index ...`,
+          `Already up to date. Local clone is in status MATCHED with head refs of origin/${gitBranch}.`
+        ]);
+      }
+    }, 1000);
+  };
+
+  // Cloudflare JWT Zero Trust Enforcer
+  const handleVerifyCloudflareAccess = () => {
+    setCloudflareVerifyStatus('verifying');
+    setCloudflareTerminalLog(prev => [
+      ...prev,
+      `[${new Date().toLocaleTimeString()}] INCOMING: Testing CF Web Gateway handshake on https://${cloudflareDomain}...`
+    ]);
+
+    setTimeout(() => {
+      setIsCloudflareEnforced(true);
+      setCloudflareVerifyStatus('enforced');
+      setCloudflareTerminalLog(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] JWT: Enforcing audience JWT signature checks (matches ID ${cloudflareClientId.slice(0, 12)}...)`,
+        `[${new Date().toLocaleTimeString()}] SSL: Handshake certified by Cloudflare DNS proxy`,
+        `[${new Date().toLocaleTimeString()}] 🟢 ENFORCED: Zero Trust Access Gateway established perfectly on PORT 3000!`
+      ]);
+      alert(`Cloudflare Access setup has been fully verified and is currently guarding the /api/* routing boundary on this node.`);
+    }, 1400);
   };
 
   // Create/Register new User node
@@ -1456,86 +1599,194 @@ export default function CustomPremiumStorefront() {
 
           {/* TAB 4: Registration of custom identity nodes */}
           {activeTab === 'register' && (
-            <div className="max-w-xl mx-auto animate-fade-in font-sans">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto animate-fade-in font-sans">
               
-              <div className={`p-8 border rounded-none shadow-sm ${
-                isWarmTheme ? 'bg-white border-stone-200' : 'bg-zinc-950 border-zinc-800'
-              }`}>
-                <div className="text-center space-y-1 mb-8 border-b pb-4">
-                  <h3 className="text-lg font-bold uppercase tracking-wide">Register New Identity</h3>
-                  <p className="text-xs opacity-60">Generate a custom tenant credential passport containing unique Role permissions and Subscription plans.</p>
-                </div>
-
-                <form onSubmit={handleRegisterNode} className="space-y-6 text-xs">
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Descriptive Full Name</label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="e.g. Henrik Ibsen"
-                      value={regName}
-                      onChange={(e) => setRegName(e.target.value)}
-                      className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
-                        isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                      }`}
-                    />
+              {/* Left Column: Manual Passport Creation */}
+              <div className="lg:col-span-6 space-y-6">
+                <div className={`p-8 border rounded-none shadow-sm ${
+                  isWarmTheme ? 'bg-white border-stone-200' : 'bg-zinc-950 border-zinc-800'
+                }`}>
+                  <div className="space-y-1 mb-8 border-b pb-4">
+                    <span className="text-[9px] uppercase tracking-widest bg-amber-150 text-amber-850 px-2 py-0.5 font-bold font-mono">CREDENTIAL_MANUAL</span>
+                    <h3 className="text-lg font-bold uppercase tracking-wide mt-1">Manual Identity Passport</h3>
+                    <p className="text-xs opacity-60">Generate a custom tenant credential passport containing unique Role permissions and Subscription plans.</p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Unique Digital Email Address</label>
-                    <input 
-                      type="email"
-                      required
-                      placeholder="e.g. henrik@ateliers.se"
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
-                        isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <form onSubmit={handleRegisterNode} className="space-y-6 text-xs">
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">System Authorization Role</label>
-                      <select 
-                        value={regRole}
-                        onChange={(e) => setRegRole(e.target.value as any)}
-                        className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
-                          isWarmTheme ? 'bg-white text-black border-stone-150' : 'bg-zinc-90 w-full'
-                        }`}
-                      >
-                        <option value="user">User (Standard Customer)</option>
-                        <option value="studio">Studio (Professional Designer)</option>
-                        <option value="admin">Admin (Systems Controller)</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Initial Subscription License</label>
-                      <select 
-                        value={regPlan}
-                        onChange={(e) => setRegPlan(e.target.value as any)}
+                      <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Descriptive Full Name</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="e.g. Henrik Ibsen"
+                        value={regName}
+                        onChange={(e) => setRegName(e.target.value)}
                         className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
                           isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
                         }`}
-                      >
-                        <option value="free">Linen Starter (20 kr/mo)</option>
-                        <option value="pro">Atelier Pro (199 kr/mo)</option>
-                        <option value="max">Studio Max (499 kr/mo)</option>
-                      </select>
+                      />
                     </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Unique Digital Email Address</label>
+                      <input 
+                        type="email"
+                        required
+                        placeholder="e.g. henrik@ateliers.se"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
+                          isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">System Authorization Role</label>
+                        <select 
+                          value={regRole}
+                          onChange={(e) => setRegRole(e.target.value as any)}
+                          className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
+                            isWarmTheme ? 'bg-white text-black border-stone-150' : 'bg-zinc-90 w-full'
+                          }`}
+                        >
+                          <option value="user">User (Standard Customer)</option>
+                          <option value="studio">Studio (Professional Designer)</option>
+                          <option value="admin">Admin (Systems Controller)</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold uppercase tracking-wider opacity-70">Initial Subscription License</label>
+                        <select 
+                          value={regPlan}
+                          onChange={(e) => setRegPlan(e.target.value as any)}
+                          className={`w-full p-2.5 border font-sans text-xs focus:ring-1 focus:ring-stone-600 focus:outline-none ${
+                            isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                          }`}
+                        >
+                          <option value="free">Linen Starter (20 kr/mo)</option>
+                          <option value="pro">Atelier Pro (199 kr/mo)</option>
+                          <option value="max">Studio Max (499 kr/mo)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button 
+                        type="submit"
+                        className="w-full py-3 bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-bold uppercase tracking-widest transition cursor-pointer"
+                      >
+                        Compile Passport & Activate Session
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              {/* Right Column: Google Sign-In & Federated SSO Portal */}
+              <div className="lg:col-span-6 space-y-6">
+                
+                {/* Visual Google Register Card */}
+                <div className={`p-8 border-2 rounded-none relative overflow-hidden space-y-6 flex flex-col justify-between ${
+                  isWarmTheme ? 'bg-[#FCFAF7] border-stone-300' : 'bg-[#0f0f11] border-zinc-700'
+                }`}>
+                  
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="bg-emerald-500 text-[#2C2A27] px-2 py-0.5 text-[8px] tracking-widest font-bold uppercase rounded-xs">
+                        SECURE FEDERATED AUTH
+                      </span>
+                      {currentUser.email === googleUserEmail ? (
+                        <span className="text-[10px] font-mono text-emerald-500 font-bold flex items-center gap-1.5 animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          GOOGLE LINKED
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono opacity-50 font-bold flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                          AWAITING SSO
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 border-b pb-4 border-[#2C2A27]/10 dark:border-zinc-800">
+                      <h3 className="text-xl font-black uppercase tracking-widest text-[#2C2A27] dark:text-amber-400 font-display flex items-center gap-2">
+                        🔑 GOOGLE CREDENTIAL PORTAL
+                      </h3>
+                      <p className="text-xs opacity-75 leading-relaxed font-sans font-light">
+                        Accelerate profile creation by connecting your authorized Google account. This registers your mailbox instantly and grants administrative access permissions.
+                      </p>
+                    </div>
+
+                    {/* Target Google parameters setup */}
+                    <div className="space-y-3 pt-2 text-xs">
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold uppercase opacity-60">Mock Authorized Google Name</label>
+                        <input 
+                          type="text" 
+                          value={googleUserName}
+                          onChange={(e) => setGoogleUserName(e.target.value)}
+                          className={`w-full p-2.5 border text-xs focus:outline-none focus:ring-1 focus:ring-stone-600 ${
+                            isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold uppercase opacity-60">Mock Authorized Google Email</label>
+                        <input 
+                          type="email" 
+                          value={googleUserEmail}
+                          onChange={(e) => setGoogleUserEmail(e.target.value)}
+                          className={`w-full p-2.5 border text-xs focus:outline-none focus:ring-1 focus:ring-stone-600 ${
+                            isWarmTheme ? 'bg-white text-black border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Google Action Button */}
+                    <div className="pt-4">
+                      <button
+                        onClick={handleGoogleRegisterAuth}
+                        disabled={isGoogleLoading}
+                        className="w-full py-4 bg-white text-black border border-stone-300 hover:bg-stone-50 text-center text-xs font-bold uppercase tracking-wider transition cursor-pointer select-none shadow-sm flex items-center justify-center gap-2.5"
+                      >
+                        {isGoogleLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          // Custom Google Color-styled Icon simulation in SVG
+                          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                            <path fill="#EA4335" d="M12.24 10.285V14.4h6.887C18.2 16.96 15.63 19.2 12.24 19.2c-3.98 0-7.2-3.21-7.2-7.2s3.22-7.2 7.2-7.2c1.74 0 3.34.62 4.59 1.635l3.235-3.235C18.065 1.44 15.35 0 12.24 0c-6.627 0-12 5.373-12 12s5.373 12 12 12c6.288 0 11.43-4.56 11.43-11.43 0-.6-.054-1.185-.15-1.715H12.24z" />
+                          </svg>
+                        )}
+                        <span>{isGoogleLoading ? 'Initiating OAuth Handshake...' : 'Sign Up & Login with Google'}</span>
+                      </button>
+                    </div>
+
                   </div>
 
-                  <div className="pt-4">
-                    <button 
-                      type="submit"
-                      className="w-full py-3 bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-bold uppercase tracking-widest transition cursor-pointer"
-                    >
-                      Compile Passport & Actiate Session
-                    </button>
+                  {/* Config Instructions */}
+                  <div className="p-4 bg-stone-100/60 dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 text-xs space-y-2 leading-relaxed">
+                    <span className="font-bold uppercase text-stone-700 dark:text-zinc-200 block text-[9px] tracking-wider">OAUTH CREDENTIAL EXPORT SNIPPET</span>
+                    <p className="text-[10px] opacity-75">
+                      To integrate a production Google authorization link, place these client variables inside your backend process:
+                    </p>
+                    <pre className="p-2 bg-[#2C2A27] text-white font-mono text-[9px] overflow-x-auto rounded-none">
+{`// googleOAuthEndpoint.ts
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: 'https://nordic-theme-lab.io/auth/google/callback'
+});`}
+                    </pre>
                   </div>
-                </form>
+
+                </div>
+
               </div>
 
             </div>
@@ -1830,9 +2081,122 @@ export default defineConfig({
 
               </div>
 
-              {/* Right Column: Premium Railway Referral Section & Direct Link Button */}
+              {/* Right Column: Git Repository Sync & Railway Host */}
               <div className="lg:col-span-6 space-y-6 animate-fade-in">
                 
+                {/* Git Synchronization Portal */}
+                <div className={`p-6 border-2 rounded-none space-y-5 relative overflow-hidden ${
+                  isWarmTheme ? 'bg-white border-[#2C2A27]' : 'bg-[#0f0f11] border-zinc-700'
+                }`}>
+                  <div className="flex justify-between items-center border-b pb-3" style={{ borderColor: isWarmTheme ? 'rgba(44,42,39,0.08)' : 'rgba(245,245,245,0.08)' }}>
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="w-5 h-5 text-emerald-500 animate-pulse" />
+                      <h3 className="text-sm font-black uppercase tracking-wider">Git repository Connector</h3>
+                    </div>
+                    <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${
+                      gitLinkStatus === 'linked' 
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40'
+                    }`}>
+                      {gitLinkStatus === 'linked' ? 'SYNCHRONIZED' : 'LOCAL WORKSPACE'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs opacity-75 font-light leading-relaxed">
+                    Link your bespoke Scandinavian showroom files directly to a remote git repository (GitHub, GitLab, or Bitbucket) to leverage modern cloud CI/CD pipelines.
+                  </p>
+
+                  <div className="space-y-3.5">
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase opacity-60">Repository URL Destination</label>
+                        <input 
+                          type="text" 
+                          value={gitRepoUrl}
+                          onChange={(e) => setGitRepoUrl(e.target.value)}
+                          placeholder="github.com/user/project"
+                          className={`w-full p-2.5 border text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                            isWarmTheme ? 'bg-stone-55 border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                          }`}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase opacity-60">Active Target Branch</label>
+                        <select 
+                          value={gitBranch}
+                          onChange={(e) => setGitBranch(e.target.value)}
+                          className={`w-full p-2.5 border text-xs focus:ring-2 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                            isWarmTheme ? 'bg-stone-55 border-stone-250 text-black' : 'bg-zinc-90 w-full'
+                          }`}
+                        >
+                          <option value="main">main (Default)</option>
+                          <option value="production">production</option>
+                          <option value="development">development</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-bold uppercase opacity-60">Personal Access Token (PAT) / SSH Secret Key</label>
+                      <input 
+                        type="password" 
+                        value={gitAuthToken}
+                        onChange={(e) => setGitAuthToken(e.target.value)}
+                        placeholder="ghp_..."
+                        className={`w-full p-2.5 border text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                          isWarmTheme ? 'bg-stone-55 border-stone-250' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                        }`}
+                      />
+                    </div>
+
+                    {/* Git Terminal Actions Command Grid */}
+                    <div className="grid grid-cols-4 gap-1.5 pt-1">
+                      <button
+                        onClick={() => runGitCommand('init')}
+                        disabled={isGitLinking}
+                        className="py-1.5 bg-zinc-805 text-stone-700 dark:text-zinc-300 hover:bg-stone-150 dark:hover:bg-zinc-800 border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        git init
+                      </button>
+                      <button
+                        onClick={() => runGitCommand('commit')}
+                        disabled={isGitLinking}
+                        className="py-1.5 bg-zinc-805 text-stone-700 dark:text-zinc-300 hover:bg-stone-150 dark:hover:bg-zinc-800 border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        add & commit
+                      </button>
+                      <button
+                        onClick={() => runGitCommand('push')}
+                        disabled={isGitLinking}
+                        className="py-1.5 bg-stone-900 text-[#c5a880] hover:bg-stone-850 border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        push raw
+                      </button>
+                      <button
+                        onClick={() => runGitCommand('pull')}
+                        disabled={isGitLinking}
+                        className="py-1.5 bg-zinc-805 text-stone-700 dark:text-zinc-300 hover:bg-stone-150 dark:hover:bg-zinc-800 border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+                      >
+                        git pull
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Monospace Git CLI Terminal */}
+                  <div className="space-y-1 text-left">
+                    <span className="block text-[8px] font-mono opacity-50 uppercase tracking-widest flex items-center gap-1">
+                      <Terminal className="w-3 h-3 text-[#c5a880]" /> Git CLI stdout terminal
+                    </span>
+                    <div className="bg-zinc-900 text-zinc-350 p-3 h-32 overflow-y-auto rounded-none text-[9px] font-mono leading-relaxed space-y-1 select-text">
+                      {gitTerminalLogs.map((log, idx) => (
+                        <div key={idx} className={log.startsWith('[USER') ? 'text-amber-400 font-bold' : log.includes('🟢') ? 'text-emerald-400 font-extrabold' : 'text-zinc-300'}>
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Full-Fidelity Railway Deployment Panel */}
                 <div className={`p-8 border-2 rounded-none relative overflow-hidden flex flex-col justify-between ${
                   isWarmTheme ? 'bg-[#FCFAF7] border-[#2C2A27]' : 'bg-[#0f0f11] border-zinc-700'
@@ -1846,7 +2210,7 @@ export default defineConfig({
                       <span className="text-xs font-mono font-bold opacity-60">REGISTRATION SPEC</span>
                     </div>
 
-                    <div className="space-y-2 border-b pb-4 border-[#2C2A27]/10">
+                    <div className="space-y-2 border-b pb-4 border-[#2C2A27]/10 dark:border-zinc-850">
                       <h3 className="text-xl font-black uppercase tracking-widest text-[#2C2A27] dark:text-amber-400 font-display flex items-center gap-2">
                         🚞 RAILWAY CLOUD HOST
                       </h3>
@@ -2142,6 +2506,112 @@ export default defineConfig({
                       <div className="bg-zinc-900 text-zinc-350 p-3 h-28 overflow-y-auto rounded-none text-[9px] font-mono leading-relaxed space-y-1 select-text">
                         {medusaLog.map((log, idx) => (
                           <div key={idx} className={log.includes('🟢') ? 'text-emerald-400 font-bold' : log.includes('CONNECTED') ? 'text-purple-400' : ''}>
+                            {log}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cloudflare Zero Trust Access & Tunnel Integration */}
+                  <div className={`p-6 border rounded-none space-y-5 ${
+                    isWarmTheme ? 'bg-white border-stone-200' : 'bg-zinc-950 border-zinc-850'
+                  }`}>
+                    <div className="flex justify-between items-center pb-2 border-b"
+                         style={{ borderColor: isWarmTheme ? 'rgba(44,42,39,0.08)' : 'rgba(245,245,245,0.08)' }}>
+                      <div className="flex items-center gap-2">
+                        <Cloud className="w-5 h-5 text-sky-500" />
+                        <h3 className="text-sm font-bold uppercase tracking-wider">Cloudflare Access & Zero Trust</h3>
+                      </div>
+                      <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${
+                        isCloudflareEnforced 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                          : 'bg-amber-100 text-amber-805 dark:bg-amber-950/40 dark:text-amber-400'
+                      }`}>
+                        {isCloudflareEnforced ? 'ZERO TRUST ENFORCED' : 'BYPASSED'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs opacity-75 font-light leading-relaxed">
+                      Incorporate Cloudflare Gateway to authenticate incoming JSON Web Tokens (JWT) asserting identity vectors, and wrap local server interactions in a secure Tunnel ingress.
+                    </p>
+
+                    <div className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold uppercase opacity-60">Cloudflare Access SSO Domain</label>
+                        <input 
+                          type="text" 
+                          value={cloudflareDomain}
+                          onChange={(e) => setCloudflareDomain(e.target.value)}
+                          placeholder="your-org.cloudflareaccess.com"
+                          className={`w-full p-2.5 border text-xs focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                            isWarmTheme ? 'bg-stone-50 border-stone-250 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold uppercase opacity-60">Audience Tag ID (AUD Key)</label>
+                          <input 
+                            type="text" 
+                            value={cloudflareClientId}
+                            onChange={(e) => setCloudflareClientId(e.target.value)}
+                            placeholder="cf-aud-3c2..."
+                            className={`w-full p-2.5 border text-xs font-mono focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                              isWarmTheme ? 'bg-stone-50 border-stone-250 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                            }`}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold uppercase opacity-60">Cloudflare Tunnel Token</label>
+                          <input 
+                            type="password" 
+                            value={cloudflareTunnelToken}
+                            onChange={(e) => setCloudflareTunnelToken(e.target.value)}
+                            className={`w-full p-2.5 border text-xs font-mono focus:ring-1 focus:ring-stone-600 focus:outline-[#c5a880] ${
+                              isWarmTheme ? 'bg-stone-50 border-stone-250 text-black' : 'bg-zinc-900 border-zinc-700 text-zinc-100'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={handleVerifyCloudflareAccess}
+                          disabled={cloudflareVerifyStatus === 'verifying'}
+                          className="flex-1 py-2.5 bg-stone-900 text-[#FAF8F5] dark:text-amber-300 hover:bg-stone-850 font-bold uppercase text-[10px] tracking-widest disabled:opacity-50 transition cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {cloudflareVerifyStatus === 'verifying' ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                          {cloudflareVerifyStatus === 'verifying' ? 'Verifying SSL Gateway...' : 'Enforce Cloudflare JWT Protection'}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsCloudflareEnforced(false);
+                            setCloudflareVerifyStatus('idle');
+                            setCloudflareTerminalLog(prev => [
+                              ...prev,
+                              `[${new Date().toLocaleTimeString()}] BYPASS: Revoked Zero Trust Gateway protection. Bypassing port 3000 JWT checks.`
+                            ]);
+                            alert('Cloudflare Access Bypass established. Zero Trust assertion checks disabled.');
+                          }}
+                          disabled={!isCloudflareEnforced}
+                          className={`px-3 py-2.5 border text-[10px] uppercase font-bold tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                            isWarmTheme ? 'border-stone-800 hover:bg-stone-100' : 'border-zinc-700 hover:bg-zinc-900 text-zinc-300'
+                          } disabled:opacity-40`}
+                        >
+                          Bypass CF
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Cloudflare terminal */}
+                    <div className="space-y-1 text-left">
+                      <span className="block text-[8px] font-mono opacity-50 uppercase tracking-widest">Cloudflare Zero Trust Ingress Log</span>
+                      <div className="bg-zinc-900 text-zinc-350 p-3 h-28 overflow-y-auto rounded-none text-[9px] font-mono leading-relaxed space-y-1 select-text">
+                        {cloudflareTerminalLog.map((log, idx) => (
+                          <div key={idx} className={log.includes('🟢') ? 'text-emerald-400 font-bold' : log.includes('HANDSHAKE') ? 'text-sky-400' : ''}>
                             {log}
                           </div>
                         ))}
