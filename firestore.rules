@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default Deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY UTILS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ellanovachenko@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- CORE ENTITY VALIDATORS ---
+    function isValidUser(user) {
+      return user.id is string && user.id.size() <= 128
+        && user.name is string && user.name.size() <= 128
+        && user.email is string && user.email.size() <= 256
+        && user.role is string && user.role in ['user', 'studio', 'admin']
+        && user.plan is string && user.plan in ['free', 'pro', 'max']
+        && user.registeredAt is string && user.registeredAt.size() <= 128
+        && (user.mrr is int || user.mrr is float);
+    }
+
+    function isValidFeedback(fb) {
+      return fb.id is string && fb.id.size() <= 128
+        && fb.name is string && fb.name.size() <= 128
+        && fb.rating is int && fb.rating >= 1 && fb.rating <= 5
+        && fb.category is string && fb.category in ['Aesthetics', 'AI Tools', 'Accessibility', 'General']
+        && fb.text is string && fb.text.size() <= 2000
+        && fb.timestamp is string && fb.timestamp.size() <= 128;
+    }
+
+    // --- COLLECTION PATH MATCHERS ---
+
+    // 1. Users profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      
+      allow create: if isEmailVerified() 
+        && isValidId(userId)
+        && isValidUser(request.resource.data)
+        && (request.resource.data.role == 'user' || isAdmin()); // Prevent self-elevating rules
+
+      allow update: if isEmailVerified() 
+        && isValidId(userId)
+        && isValidUser(request.resource.data)
+        && (isOwner(userId) || isAdmin())
+        && (
+          // Standard users can only update specific profile fields, never their role
+          (
+            request.resource.data.role == resource.data.role 
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'plan', 'mrr'])
+          ) || isAdmin()
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // 2. Feedbacks Submissions
+    match /feedbacks/{feedbackId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      allow create: if isEmailVerified()
+        && isValidId(feedbackId)
+        && isValidFeedback(request.resource.data);
+
+      allow update, delete: if isAdmin();
+    }
+
+    // 3. Early Access Waitlist
+    match /waitlist/{waitlistId} {
+      allow get: if isEmailVerified() && (resource.data.email == request.auth.token.email || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isEmailVerified()
+        && isValidId(waitlistId)
+        && isValidUser(request.resource.data);
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

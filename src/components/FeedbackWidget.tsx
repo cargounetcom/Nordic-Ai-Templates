@@ -6,6 +6,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, MessageSquare, X, Send, Heart, Eye } from 'lucide-react';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
 
 interface FeedbackSubmission {
   id: string;
@@ -36,24 +38,42 @@ export default function FeedbackWidget({ themeStyle }: FeedbackWidgetProps) {
   // List of submissions
   const [submissions, setSubmissions] = useState<FeedbackSubmission[]>([]);
 
-  // Load from local storage
+  // Load and listen to feedback collection in real time
   useEffect(() => {
-    const saved = localStorage.getItem('nordic_client_feedbacks');
-    if (saved) {
-      try {
-        setSubmissions(JSON.parse(saved));
-      } catch (e) {
-        console.error(e);
+    const unsubscribe = onSnapshot(collection(db, 'feedbacks'), (snapshot) => {
+      if (snapshot.empty) {
+        // Bootstrap Firestore with initial feedbacks
+        const mockList: FeedbackSubmission[] = [
+          { id: 'fb-1', name: 'Morten R.', rating: 5, category: 'Aesthetics', text: 'Stunning typography. Absolute masterpiece of spacing rules!', timestamp: '2026-06-01 06:12:00' },
+          { id: 'fb-2', name: 'Sven K.', rating: 4, category: 'AI Tools', text: 'The Gemini compiler was fast. Generated variables with clear CSS outputs.', timestamp: '2026-06-01 06:40:00' }
+        ];
+        mockList.forEach(async (fb) => {
+          try {
+            await setDoc(doc(db, 'feedbacks', fb.id), fb);
+          } catch (err) {
+            console.error("Feedback bootstrapping error:", err);
+          }
+        });
+      } else {
+        const list: FeedbackSubmission[] = [];
+        snapshot.forEach((doc) => {
+          list.push(doc.data() as FeedbackSubmission);
+        });
+        setSubmissions(list);
       }
-    } else {
-      // Defaults
-      const mockList: FeedbackSubmission[] = [
-        { id: 'fb-1', name: 'Morten R.', rating: 5, category: 'Aesthetics', text: 'Stunning typography. Absolute masterpiece of spacing rules!', timestamp: '2026-06-01 06:12:00' },
-        { id: 'fb-2', name: 'Sven K.', rating: 4, category: 'AI Tools', text: 'The Gemini compiler was fast. Generated variables with clear CSS outputs.', timestamp: '2026-06-01 06:40:00' }
-      ];
-      localStorage.setItem('nordic_client_feedbacks', JSON.stringify(mockList));
-      setSubmissions(mockList);
-    }
+    }, (error) => {
+      // Graceful fallback to client localstorage if rule states restrict list operation
+      const saved = localStorage.getItem('nordic_client_feedbacks');
+      if (saved) {
+        try {
+          setSubmissions(JSON.parse(saved));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -68,6 +88,11 @@ export default function FeedbackWidget({ themeStyle }: FeedbackWidgetProps) {
       text: text,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19)
     };
+
+    // Attempt pushing review to real Cloud Firestore
+    setDoc(doc(db, 'feedbacks', newFeedback.id), newFeedback).catch((err) => {
+      console.warn("Cloud Firestore feedback capture restricted or disconnected (saving locally):", err);
+    });
 
     const updated = [newFeedback, ...submissions];
     setSubmissions(updated);

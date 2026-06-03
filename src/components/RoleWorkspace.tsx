@@ -43,6 +43,14 @@ import {
   Github
 } from 'lucide-react';
 import { DesignTemplate, FiftyNordicTemplates } from '../data/templates';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signOut,
+  onAuthStateChanged
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, onSnapshot, getDocsFromServer } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 
 export interface UserAccount {
   id: string;
@@ -543,18 +551,90 @@ export default function CustomPremiumStorefront() {
   };
 
 
-  // Track changes to localstorage 
+  // Live database replication & authentication state hook
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        await getDocsFromServer(collection(db, 'users'));
+        console.log("Firestore connection probe validated successfully.");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Firestore client is offline. Verify configuration parameters.");
+        }
+      }
+    };
+    testConnection();
+
+    // Subscribe to users collection in real time
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      if (snapshot.empty) {
+        // Bootstrap Firestore collection automatically with initial mock dataset
+        INITIAL_USERS.forEach(async (u) => {
+          try {
+            await setDoc(doc(db, 'users', u.id), u);
+          } catch (e) {
+            console.error("Relational bootstrap error on: ", u.id, e);
+          }
+        });
+      } else {
+        const users: UserAccount[] = [];
+        snapshot.forEach((doc) => {
+          users.push(doc.data() as UserAccount);
+        });
+        setUsersList(users);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+    });
+
+    // Mirror Auth state to active workspace profiler tab
+    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setAdminTerminalLogs(prev => [
+          `[${new Date().toLocaleTimeString()}] AUTH: Active verified Google Identity spotted: ${user.email}`,
+          ...prev
+        ]);
+        // Fast link to loaded profile if available
+        const savedUsers = localStorage.getItem('nordic_tenant_users');
+        const activeList: UserAccount[] = savedUsers ? JSON.parse(savedUsers) : INITIAL_USERS;
+        const linked = activeList.find(u => u.email.toLowerCase() === user.email?.toLowerCase());
+        if (linked) {
+          setCurrentUser(linked);
+        } else {
+          // Auto create standard user profile node for them
+          const newProfile: UserAccount = {
+            id: user.uid,
+            name: user.displayName || 'Authorized Google Designer',
+            email: user.email || 'designer@studio-matrix.se',
+            role: user.email === 'ellanovachenko@gmail.com' ? 'admin' : 'studio',
+            plan: 'max',
+            registeredAt: new Date().toISOString().split('T')[0],
+            mrr: 499
+          };
+          setDoc(doc(db, 'users', user.uid), newProfile).catch(err => console.error(err));
+          setCurrentUser(newProfile);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      authUnsubscribe();
+    };
+  }, []);
+
+  // Track changes to localstorage to preserve fallback compatibility
   useEffect(() => {
     localStorage.setItem('nordic_tenant_users', JSON.stringify(usersList));
   }, [usersList]);
 
   // Synchronize currentUser when usersList changes
   useEffect(() => {
-    const fresh = usersList.find(u => u.id === currentUser.id);
+    const fresh = usersList.find(u => u.id === currentUser.id || u.email === currentUser.email);
     if (fresh) {
       setCurrentUser(fresh);
     }
-  }, [usersList, currentUser.id]);
+  }, [usersList, currentUser.id, currentUser.email]);
 
   // Handle Preset Fast-logins
   const handlePresetLogin = (email: string) => {
@@ -569,42 +649,58 @@ export default function CustomPremiumStorefront() {
   };
 
   // Google SSO Autologin and Registrate Account
-  const handleGoogleRegisterAuth = () => {
+  const handleGoogleRegisterAuth = async () => {
     setIsGoogleLoading(true);
     setAdminTerminalLogs(prev => [
-      `[${new Date().toLocaleTimeString()}] INCOMING: Initialized Google OAuth account link for ${googleUserEmail}`,
+      `[${new Date().toLocaleTimeString()}] INCOMING: Initializing real Google OAuth Popup...`,
       ...prev
     ]);
 
-    setTimeout(() => {
+    try {
+      const provider = new GoogleAuthProvider();
+      // Enforce custom parameters if needed
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
       const planCost = 499; // Studio Max by default inside Premium Google flow
-      const gId = `usr-g${Date.now().toString().slice(-3)}`;
-      const newNode = {
-        id: gId,
-        name: googleUserName,
-        email: googleUserEmail,
-        role: 'admin' as const,
-        plan: 'max' as const,
+      const newNode: UserAccount = {
+        id: user.uid,
+        name: user.displayName || 'Authorized Google User',
+        email: user.email || 'google-user@domain.com',
+        role: user.email === 'ellanovachenko@gmail.com' ? 'admin' : 'studio', // Elevating central user
+        plan: 'max',
         registeredAt: new Date().toISOString().split('T')[0],
         mrr: planCost
       };
 
-      setUsersList(prev => {
-        // remove duplicate email if already exists
-        const filtered = prev.filter(u => u.email.toLowerCase() !== googleUserEmail.toLowerCase());
-        return [newNode, ...filtered];
-      });
+      await setDoc(doc(db, 'users', user.uid), newNode);
       setCurrentUser(newNode);
       setGoogleClientRegistered(true);
-      setIsGoogleLoading(false);
 
       setAdminTerminalLogs(prev => [
-        `[${new Date().toLocaleTimeString()}] 🟢 Google Account [${googleUserEmail}] successfully authenticated and elevated to Studio Max Admin`,
+        `[${new Date().toLocaleTimeString()}] 🟢 Real Google Account [${user.email}] authenticated and synchronized to Firestore!`,
         ...prev
       ]);
-      alert(`Google Identity link established! Welcome ${googleUserName} (${googleUserEmail}). Session has been elevated to Central Studio Max Administrator.`);
-      setActiveTab('admin');
-    }, 1200);
+      alert(`Google Identity link established! Welcome ${newNode.name} (${newNode.email}). Session has been elevated to Central Studio Max User.`);
+      
+      if (newNode.role === 'admin') {
+        setActiveTab('admin');
+      } else if (newNode.role === 'studio') {
+        setActiveTab('studio');
+      } else {
+        setActiveTab('profiler');
+      }
+    } catch (error) {
+      console.error(error);
+      setAdminTerminalLogs(prev => [
+        `[${new Date().toLocaleTimeString()}] ❌ OAuth handshaking failed: ${error instanceof Error ? error.message : String(error)}`,
+        ...prev
+      ]);
+      alert(`Google Authenticated identity registration aborted: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   // Git Repository Connecter Suite
@@ -678,7 +774,7 @@ export default function CustomPremiumStorefront() {
   };
 
   // Create/Register new User node
-  const handleRegisterNode = (e: React.FormEvent) => {
+  const handleRegisterNode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regName || !regEmail) return;
 
@@ -689,9 +785,9 @@ export default function CustomPremiumStorefront() {
     }
 
     const planCost = regPlan === 'free' ? 20 : regPlan === 'pro' ? 199 : 499;
-
+    const newId = `usr-${Date.now().toString().slice(-4)}`;
     const newNode: UserAccount = {
-      id: `usr-${Date.now().toString().slice(-4)}`,
+      id: newId,
       name: regName,
       email: regEmail,
       role: regRole,
@@ -700,45 +796,42 @@ export default function CustomPremiumStorefront() {
       mrr: planCost
     };
 
-    const updated = [newNode, ...usersList];
-    setUsersList(updated);
-    setCurrentUser(newNode);
-
-    // Reset inputs
-    setRegName('');
-    setRegEmail('');
-    
-    // Send to correct visual portal
-    if (regRole === 'admin') {
-      setActiveTab('admin');
-    } else if (regRole === 'studio') {
-      setActiveTab('studio');
-    } else {
-      setActiveTab('profiler');
+    try {
+      await setDoc(doc(db, 'users', newId), newNode);
+      setCurrentUser(newNode);
+      setRegName('');
+      setRegEmail('');
+      alert(`Success! Generated passport for ${newNode.name} securely in cloud Firestore.`);
+      
+      if (regRole === 'admin') {
+        setActiveTab('admin');
+      } else if (regRole === 'studio') {
+        setActiveTab('studio');
+      } else {
+        setActiveTab('profiler');
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${newId}`);
     }
   };
 
   // Perform promotion/role demotion inside directory
-  const handleUpdateUserRole = (userId: string, newRole: 'user' | 'studio' | 'admin') => {
-    const updated = usersList.map(u => {
-      if (u.id === userId) {
-        return { ...u, role: newRole };
-      }
-      return u;
-    });
-    setUsersList(updated);
+  const handleUpdateUserRole = async (userId: string, newRole: 'user' | 'studio' | 'admin') => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: newRole });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userId}`);
+    }
   };
 
   // Perform subscription upgrade instantly from the subscriber panel
-  const handleUpdateSubscription = (userId: string, targetPlan: 'free' | 'pro' | 'max') => {
+  const handleUpdateSubscription = async (userId: string, targetPlan: 'free' | 'pro' | 'max') => {
     const planCost = targetPlan === 'free' ? 20 : targetPlan === 'pro' ? 199 : 499;
-    const updated = usersList.map(u => {
-      if (u.id === userId) {
-        return { ...u, plan: targetPlan, mrr: planCost };
-      }
-      return u;
-    });
-    setUsersList(updated);
+    try {
+      await updateDoc(doc(db, 'users', userId), { plan: targetPlan, mrr: planCost });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userId}`);
+    }
   };
 
   // Modify client list for Studio Workspace
@@ -1576,7 +1669,13 @@ export default function CustomPremiumStorefront() {
                               <button 
                                 onClick={() => {
                                   if (confirm(`Revoke and delete the subscription node for ${u.name}?`)) {
-                                    setUsersList(usersList.filter(item => item.id !== u.id));
+                                    (async () => {
+                                      try {
+                                        await deleteDoc(doc(db, 'users', u.id));
+                                      } catch (error) {
+                                        handleFirestoreError(error, OperationType.DELETE, `users/${u.id}`);
+                                      }
+                                    })();
                                   }
                                 }}
                                 className="text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 transition cursor-pointer"

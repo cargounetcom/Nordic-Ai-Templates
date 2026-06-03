@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Check, AlertTriangle, Sparkles, Send, ShieldCheck, Heart } from 'lucide-react';
 import { UserAccount } from './RoleWorkspace';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface EarlyAccessWaitlistProps {
   themeStyle: 'warm' | 'brutalist';
@@ -82,6 +84,11 @@ export default function EarlyAccessWaitlist({ themeStyle }: EarlyAccessWaitlistP
         registeredAt: new Date().toISOString().split('T')[0],
         mrr: role === 'studio' ? 199 : 20
       };
+
+      // Attempt writing waitlist record directly inside real Cloud Firestore waitlist collection
+      setDoc(doc(db, 'waitlist', newUserNode.id), newUserNode).catch((err) => {
+        console.warn("Cloud Firestore waitlist write restriction or offline (preserv local state):", err);
+      });
 
       const updatedUsers = [newUserNode, ...activeUsers];
       localStorage.setItem('nordic_tenant_users', JSON.stringify(updatedUsers));

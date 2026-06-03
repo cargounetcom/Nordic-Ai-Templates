@@ -40,7 +40,7 @@ export default function App() {
 
   // Legal compliance portals states
   const [isLegalOpen, setIsLegalOpen] = useState(false);
-  const [legalTab, setLegalTab] = useState<'privacy' | 'gdpr' | 'terms'>('privacy');
+  const [legalTab, setLegalTab] = useState<'trust' | 'privacy' | 'gdpr' | 'terms'>('trust');
 
   // Set up local Stockholm/Copenhagen digital time updates
   useEffect(() => {
@@ -673,6 +673,15 @@ export default function App() {
         <div className="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-[10px] font-sans font-bold tracking-wider">
           <button 
             type="button" 
+            onClick={() => { setLegalTab('trust'); setIsLegalOpen(true); }}
+            className="text-[#9c8469] hover:text-stone-800 transition-colors uppercase cursor-pointer flex items-center gap-1 font-extrabold"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Corporate Trust Certificate</span>
+          </button>
+          <span className="text-stone-300">•</span>
+          <button 
+            type="button" 
             onClick={() => { setLegalTab('privacy'); setIsLegalOpen(true); }}
             className="text-stone-500 hover:text-stone-800 transition-colors uppercase cursor-pointer"
           >
@@ -682,7 +691,7 @@ export default function App() {
           <button 
             type="button" 
             onClick={() => { setLegalTab('gdpr'); setIsLegalOpen(true); }}
-            className="text-[#9c8469] hover:text-stone-800 transition-colors uppercase cursor-pointer"
+            className="text-stone-500 hover:text-stone-800 transition-colors uppercase cursor-pointer"
           >
             GDPR Compliance Hub
           </button>
@@ -692,7 +701,7 @@ export default function App() {
             onClick={() => { setLegalTab('terms'); setIsLegalOpen(true); }}
             className="text-stone-500 hover:text-stone-800 transition-colors uppercase cursor-pointer"
           >
-            Terms of Service
+            Terms of service
           </button>
         </div>
 

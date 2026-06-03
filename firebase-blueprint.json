@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Custom registered tenant with structural roles and subscriptions inside the design matrix.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique primary key of the user node matching credentials or auth identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Descriptive legal name of the design tenant."
+        },
+        "email": {
+          "type": "string",
+          "description": "Digital verified mailbox address of the tenant."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "studio", "admin"],
+          "description": "Access authorization level inside the studio workspace."
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free", "pro", "max"],
+          "description": "Subscription tier enabling design token compiles."
+        },
+        "registeredAt": {
+          "type": "string",
+          "description": "ISO date string representing registration timestamp."
+        },
+        "mrr": {
+          "type": "number",
+          "description": "Monthly recurring revenue contribution in Swedish Krona (SEK)."
+        }
+      },
+      "required": ["id", "name", "email", "role", "plan", "registeredAt"]
+    },
+    "Feedback": {
+      "title": "Feedback Submission",
+      "description": "User review or critique analyzing layout, spacing, typography, and AI compiler performance.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique feedback signature."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the submitter or reviewer."
+        },
+        "rating": {
+          "type": "number",
+          "description": "Quantitative star assessment out of 5."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["Aesthetics", "AI Tools", "Accessibility", "General"],
+          "description": "Thematic focus area of the critique."
+        },
+        "text": {
+          "type": "string",
+          "description": "Detailed text feedback."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "ISO or formatted timestamp of submission."
+        }
+      },
+      "required": ["id", "name", "rating", "category", "text", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Directory of verified developer and admin tenants guarding workspace access."
+    },
+    "feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Immutable visual feedback and compilation telemetry records."
+    },
+    "waitlist/{waitlistId}": {
+      "schema": "User",
+      "description": "Submissions for early access program prioritized by register delay."
+    }
+  }
+}
