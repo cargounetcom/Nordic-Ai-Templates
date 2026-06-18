@@ -43,6 +43,7 @@ import {
   Github
 } from 'lucide-react';
 import { DesignTemplate, FiftyNordicTemplates } from '../data/templates';
+import UserProfile from './UserProfile';
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
@@ -1087,6 +1088,8 @@ export default function CustomPremiumStorefront() {
           {/* TAB 1: Profiler & Subscriptions Cabinet */}
           {activeTab === 'profiler' && (
             <div className="space-y-8 animate-fade-in">
+              <UserProfile themeStyle={themeStyle} />
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 {/* Visual Pricing & Plan Selector matrix */}
